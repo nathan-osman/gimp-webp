@@ -1,0 +1,5 @@
+gimp-webp (0.1-1) natty; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Nathan Osman <admin@quickmediasolutions.com>  Thu, 26 May 2011 10:57:46 -0800
