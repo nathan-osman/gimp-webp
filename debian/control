@@ -2,7 +2,7 @@ Source: gimp-webp
 Section: web
 Priority: extra
 Maintainer: Nathan Osman <admin@quickmediasolutions.com>
-Build-Depends: debhelper (>= 7.0.50~), libgimp2.0-dev
+Build-Depends: debhelper (>= 7.0.50~), libgimp2.0-dev, libwebp-dev
 Standards-Version: 3.8.4
 Homepage: https://launchpad.net/gimp-webp
 
