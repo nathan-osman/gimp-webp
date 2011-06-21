@@ -104,7 +104,7 @@ void query()
                            "Copyright Nathan Osman",
                            "2011",
                            "WebP image",
-                           NULL,
+                           "RGB*",
                            GIMP_PLUGIN,
                            G_N_ELEMENTS(save_arguments),
                            0,
