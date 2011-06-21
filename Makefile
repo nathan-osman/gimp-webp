@@ -2,7 +2,7 @@
 
 all:
 	export LIBS=-lwebp; \
-	gimptool-2.0 --build-strip file-webp.c
+	gimptool-2.0 --build file-webp.c
 
 install:
 	mkdir -p $(DESTDIR)$(exec_prefix)/lib/gimp/2.0/plug-ins
