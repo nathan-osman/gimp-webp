@@ -23,7 +23,6 @@
 
 // Gimp and WebP headers
 #include <libgimp/gimp.h>
-#include <libgimp/gimpexport.h>
 #include <libgimp/gimpui.h>
 
 #include <webp/decode.h>
