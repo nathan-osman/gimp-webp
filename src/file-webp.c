@@ -86,7 +86,7 @@ void query()
                            "Loads images in the WebP file format",
                            "Nathan Osman",
                            "Copyright Nathan Osman",
-                           "2011",
+                           "2012",
                            "WebP image",
                            NULL,
                            GIMP_PLUGIN,
@@ -97,11 +97,11 @@ void query()
 
     // Install the save procedure
     gimp_install_procedure(SAVE_PROCEDURE,
-                           "Saves files in the WebP file format",
-                           "Saves files in the WebP file format",
+                           "Saves files in the WebP image format",
+                           "Saves files in the WebP image format",
                            "Nathan Osman",
                            "Copyright Nathan Osman",
-                           "2011",
+                           "2012",
                            "WebP image",
                            "RGB*",
                            GIMP_PLUGIN,
