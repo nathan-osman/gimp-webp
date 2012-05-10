@@ -25,8 +25,8 @@ $(OBJ_DIR):
 	test -d $(OBJ_DIR) || mkdir -p $(OBJ_DIR)
 
 clean:
-	rm -rf $(OBJ_DIR)
-	rm $(TARGET)
+	test ! -d $(OBJ_DIR) || rm -rf $(OBJ_DIR)
+	test ! -f $(TARGET) || rm $(TARGET)
 
 install:
 	mkdir -p $(DESTDIR)$(exec_prefix)/lib/gimp/2.0/plug-ins
