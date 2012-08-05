@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
+#include <libgimpbase/gimpversion.h>
 
 extern const char SAVE_PROCEDURE[];
 extern const char BINARY_NAME[];
@@ -61,13 +62,25 @@ int export_dialog(float * quality)
     GtkWidget * table;
     GtkObject * scale;
 
-    // Create the dialog
+    // Create the dialog - using the new export dialog for Gimp 2.7+
+    // and falling back to a GTK dialog for < Gimp 2.7
+#if (GIMP_MAJOR_VERSION == 2 && GIMP_MINOR_VERSION >= 7) || GIMP_MAJOR_VERSION > 2
     dialog = gimp_export_dialog_new("WebP",
                                     BINARY_NAME,
                                     SAVE_PROCEDURE);
+#else
+    dialog = gimp_dialog_new("WebP",
+                             BINARY_NAME,
+                             NULL, 0,
+                             NULL,
+                             SAVE_PROCEDURE,
+                             GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                             GTK_STOCK_SAVE,   GTK_RESPONSE_OK,
+                             NULL);
+#endif
 
     // Create the VBox
-    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    vbox = gtk_vbox_new(TRUE, 10);
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
     gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
                        vbox, TRUE, TRUE, 2);
