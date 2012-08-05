@@ -98,6 +98,11 @@ int export_dialog(float * quality, int * flags)
     gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 2);
     gtk_widget_show(label);
 
+    /* Create the checkbox. */
+    lossless = gtk_check_button_new_with_label("Lossless");
+    gtk_box_pack_start(GTK_BOX(vbox), lossless, FALSE, FALSE, 6);
+    gtk_widget_show(lossless);
+
     /* Create the table. */
     table = gtk_table_new(1, 3, FALSE);
     gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 6);
@@ -112,12 +117,7 @@ int export_dialog(float * quality, int * flags)
                                  "Quality for encoding the image",
                                  NULL);
 
-    /* Create the checkbox. */
-    lossless = gtk_check_button_new_with_label("Lossless");
-    gtk_box_pack_start(GTK_BOX(vbox), lossless, FALSE, FALSE, 6);
-    gtk_widget_show(lossless);
-
-    // Connect to the response signal
+    /* Connect to the response signal. */
     data.response      = 0;
     data.quality_scale = scale;
     data.lossless      = lossless;
@@ -127,7 +127,7 @@ int export_dialog(float * quality, int * flags)
     g_signal_connect(dialog, "response", G_CALLBACK(on_response),   &data);
     g_signal_connect(dialog, "destroy",  G_CALLBACK(gtk_main_quit), NULL);
 
-    // Show the dialog and run it
+    /* Show the dialog and run it. */
     gtk_widget_show(dialog);
     gimp_dialog_run(GIMP_DIALOG(dialog));
     gtk_widget_destroy(dialog);

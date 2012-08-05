@@ -72,22 +72,18 @@ int write_webp(const gchar * filename, gint drawable_id, float quality, int flag
     /* Now that we have the actual image data, encode it. Based on
        the flags provided, we create a lossy or lossless image. */
     if(flags & WEBP_OPTIONS_LOSSLESS)
-    {
         output_size = WebPEncodeLosslessRGB((const uint8_t *)image_data,
                                             drawable->width,
                                             drawable->height,
-                                            drawable->width * 3,
+                                            drawable->width * (bpp / 8),
                                             &raw_data);
-    }
     else
-    {
         output_size = WebPEncodeRGB((const uint8_t *)image_data,
                                     drawable->width,
                                     drawable->height,
-                                    drawable->width * 3,
+                                    drawable->width * (bpp / 8),
                                     quality,
                                     &raw_data);
-    }
 
     /* Free the uncompressed image data. */
     free(image_data);
@@ -97,10 +93,7 @@ int write_webp(const gchar * filename, gint drawable_id, float quality, int flag
 
     /* Make sure that there was no error during the encoding process. */
     if(!output_size)
-    {
-        free(raw_data);
         return 0;
-    }
 
     /* Open the file we are writing to. */
     file = fopen(filename, "wb");

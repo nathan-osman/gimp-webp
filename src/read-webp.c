@@ -16,12 +16,12 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======================================================================*/
 
-#include "read-webp.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <libgimp/gimp.h>
 #include <webp/decode.h>
+
+#include "read-webp.h"
 
 int read_webp(const gchar * filename)
 {
@@ -35,38 +35,36 @@ int read_webp(const gchar * filename)
     GimpDrawable * drawable;
     GimpPixelRgn rgn;
 
-
-    // Try to open the file
+    /* Try to open the file. */
     file = fopen(filename, "rb");
     if(!file)
         return -1;
 
-    // Get the file size
+    /* Get the file size. */
     fseek(file, 0, SEEK_END);
     filesize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    // Now prepare a buffer of that size
-    // and read the data.
+    /* Now prepare a buffer of that size and read the data. */
     data = malloc(filesize);
-    if(fread(data, filesize, 1, file) != filesize)
+    if(!data || !fread(data, filesize, 1, file))
         return -1;
 
-    // Close the file
+    /* Close the file. */
     fclose(file);
 
-    // Perform the load procedure and free the raw data.
+    /* Perform the load procedure and free the raw data. */
     image_data = WebPDecodeRGB(data, filesize, &width, &height);
     free(data);
 
-    // Check to make sure that the load was successful
+    /* Check to make sure that the load was successful. */
     if(!image_data)
         return -1;
 
-    // Now create the new RGBA image.
+    /* Now create the new RGBA image. */
     new_image_id = gimp_image_new(width, height, GIMP_RGB);
 
-    // Create the new layer
+    /* Create the new layer. */
     new_layer_id = gimp_layer_new(new_image_id,
                                   "Background",
                                   width, height,
@@ -74,33 +72,31 @@ int read_webp(const gchar * filename)
                                   100,
                                   GIMP_NORMAL_MODE);
 
-    // Get the drawable for the layer
+    /* Get the drawable for the layer. */
     drawable = gimp_drawable_get(new_layer_id);
 
-    // Get a pixel region from the layer
+    /* Get a pixel region from the layer. */
     gimp_pixel_rgn_init(&rgn,
                         drawable,
                         0, 0,
                         width, height,
                         TRUE, FALSE);
 
-    // Now FINALLY set the pixel data
+    /* Now FINALLY set the pixel data. */
     gimp_pixel_rgn_set_rect(&rgn,
                             image_data,
                             0, 0,
                             width, height);
 
-    // We're done with the drawable
+    /* We're done with the drawable. */
     gimp_drawable_flush(drawable);
     gimp_drawable_detach(drawable);
 
-    // Free the image data
-    free((void *)image_data);
+    /* Free the image data. */
+    free(image_data);
 
-    // Add the layer to the image
+    /* Add the layer to the image and set the filename. */
     gimp_image_add_layer(new_image_id, new_layer_id, 0);
-
-    // Set the filename
     gimp_image_set_filename(new_image_id, filename);
 
     return new_image_id;
