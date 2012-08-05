@@ -75,13 +75,13 @@ int write_webp(const gchar * filename, gint drawable_id, float quality, int flag
         output_size = WebPEncodeLosslessRGB((const uint8_t *)image_data,
                                             drawable->width,
                                             drawable->height,
-                                            drawable->width * (bpp / 8),
+                                            drawable->width * 3,
                                             &raw_data);
     else
         output_size = WebPEncodeRGB((const uint8_t *)image_data,
                                     drawable->width,
                                     drawable->height,
-                                    drawable->width * (bpp / 8),
+                                    drawable->width * 3,
                                     quality,
                                     &raw_data);
 
