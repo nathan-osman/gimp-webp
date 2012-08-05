@@ -16,11 +16,12 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======================================================================*/
 
-#include "write-webp.h"
-
 #include <stdio.h>
+#include <stdlib.h>
 #include <libgimp/gimp.h>
 #include <webp/encode.h>
+
+#include "write-webp.h"
 
 int write_webp(const gchar * filename, gint drawable_id, float quality)
 {

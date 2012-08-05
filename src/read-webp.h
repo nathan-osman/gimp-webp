@@ -16,6 +16,11 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======================================================================*/
 
+#ifndef READ_WEBP_H
+#define READ_WEBP_H
+
 #include <glib.h>
 
 int read_webp(const gchar *);
+
+#endif // READ_WEBP_H

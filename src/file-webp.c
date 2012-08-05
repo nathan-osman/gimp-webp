@@ -24,9 +24,9 @@
 #include "write-webp.h"
 #include "export-dialog.h"
 
+const char BINARY_NAME[]    = "file-webp";
 const char LOAD_PROCEDURE[] = "file-webp-load";
 const char SAVE_PROCEDURE[] = "file-webp-save";
-const char BINARY_NAME[]    = "file-webp";
 
 // Predeclare our entrypoints
 void query();

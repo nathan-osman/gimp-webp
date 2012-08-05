@@ -16,18 +16,18 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======================================================================*/
 
-#include <stdio.h>
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
 #include <libgimpbase/gimpversion.h>
 
-extern const char SAVE_PROCEDURE[];
-extern const char BINARY_NAME[];
+#include "export-dialog.h"
+#include "file-webp.h"
 
 /* Stores values from the input controls. */
 struct webp_data {
     int         response;
     GtkObject * quality_scale;
+    GtkWidget * lossless;
     float     * quality;
     int       * flags;
 };
@@ -47,6 +47,10 @@ void on_response(GtkDialog * dialog,
         GtkHScale * hscale = GIMP_SCALE_ENTRY_SCALE(data->quality_scale);
         *(data->quality) = gtk_range_get_value(GTK_RANGE(hscale));
 
+        /* Determine if the lossless checkbox is checked. */
+        if(gtk_toggle_button_get_mode(GTK_TOGGLE_BUTTON(data->lossless)) == TRUE)
+            *(data->flags) |= WEBP_OPTIONS_LOSSLESS;
+
         /* Indicate a positive response. */
         data->response = 1;
     }
@@ -55,7 +59,7 @@ void on_response(GtkDialog * dialog,
     gtk_main_quit();
 }
 
-int export_dialog(float * quality)
+int export_dialog(float * quality, int * flags)
 {
     struct webp_data data;
     GtkWidget * dialog;
@@ -63,9 +67,10 @@ int export_dialog(float * quality)
     GtkWidget * label;
     GtkWidget * table;
     GtkObject * scale;
+    GtkWidget * lossless;
 
-    // Create the dialog - using the new export dialog for Gimp 2.7+
-    // and falling back to a GTK dialog for < Gimp 2.7
+    /* Create the dialog - using the new export dialog for Gimp 2.7+
+       and falling back to a GTK dialog for < Gimp 2.7. */
 #if (GIMP_MAJOR_VERSION == 2 && GIMP_MINOR_VERSION >= 7) || GIMP_MAJOR_VERSION > 2
     dialog = gimp_export_dialog_new("WebP",
                                     BINARY_NAME,
@@ -81,24 +86,24 @@ int export_dialog(float * quality)
                              NULL);
 #endif
 
-    // Create the VBox
+    /* Create the VBox. */
     vbox = gtk_vbox_new(TRUE, 10);
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
     gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
                        vbox, TRUE, TRUE, 2);
     gtk_widget_show(vbox);
 
-    // Create the label
+    /* Create the label. */
     label = gtk_label_new("The options below allow you to customize\nthe WebP image that is created.");
     gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 2);
     gtk_widget_show(label);
 
-    // Create the table
+    /* Create the table. */
     table = gtk_table_new(1, 3, FALSE);
     gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 6);
     gtk_widget_show(table);
 
-    // Create the scale
+    /* Create the scale. */
     scale = gimp_scale_entry_new(GTK_TABLE(table), 0, 0,
                                  "Quality:",
                                  150, 0,
@@ -107,10 +112,17 @@ int export_dialog(float * quality)
                                  "Quality for encoding the image",
                                  NULL);
 
+    /* Create the checkbox. */
+    lossless = gtk_check_button_new_with_label("Lossless");
+    gtk_box_pack_start(GTK_BOX(vbox), lossless, FALSE, FALSE, 6);
+    gtk_widget_show(lossless);
+
     // Connect to the response signal
     data.response      = 0;
     data.quality_scale = scale;
+    data.lossless      = lossless;
     data.quality       = quality;
+    data.flags         = flags;
 
     g_signal_connect(dialog, "response", G_CALLBACK(on_response),   &data);
     g_signal_connect(dialog, "destroy",  G_CALLBACK(gtk_main_quit), NULL);

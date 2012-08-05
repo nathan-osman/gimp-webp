@@ -49,7 +49,8 @@ int read_webp(const gchar * filename)
     // Now prepare a buffer of that size
     // and read the data.
     data = malloc(filesize);
-    fread(data, filesize, 1, file);
+    if(fread(data, filesize, 1, file) != filesize)
+        return -1;
 
     // Close the file
     fclose(file);

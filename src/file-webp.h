@@ -16,12 +16,10 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======================================================================*/
 
-#ifndef EXPORT_DIALOG_H
-#define EXPORT_DIALOG_H
+#ifndef FILE_WEBP_H
+#define FILE_WEBP_H
 
-/* Export flags. */
-#define WEBP_OPTIONS_LOSSLESS 1
+extern const char BINARY_NAME[];
+extern const char SAVE_PROCEDURE[];
 
-int export_dialog(float *, int *);
-
-#endif // EXPORT_DIALOG_H
+#endif // FILE_WEBP_H

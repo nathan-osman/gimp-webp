@@ -16,6 +16,11 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======================================================================*/
 
+#ifndef WRITE_WEBP_H
+#define WRITE_WEBP_H
+
 #include <glib.h>
 
 int write_webp(const gchar *, gint, float);
+
+#endif // WRITE_WEBP_H
