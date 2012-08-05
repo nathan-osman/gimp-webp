@@ -6,7 +6,12 @@ installed. You can find them here:
 
     http://code.google.com/speed/webp/download.html
 
+You will also need the GTK+ and Gimp header files installed.
+
 After that, you can compile it on Unix / Linux using:
 
-    export LIBS=-lwebp
-    gimptool-2.0 --install file-webp.c
+    make
+
+The plugin can be installed by running:
+
+    sudo make install

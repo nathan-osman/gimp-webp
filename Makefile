@@ -3,13 +3,8 @@ CC      = gcc
 TARGET  = file-webp
 SRC_DIR = src
 OBJ_DIR = obj
-CFLAGS  = $(shell pkg-config --cflags gtk+-2.0) \
-          $(shell pkg-config --cflags gimp-2.0)
-LFLAGS  = $(shell pkg-config --libs glib-2.0) \
-          $(shell pkg-config --libs gtk+-2.0) \
-          $(shell pkg-config --libs gimp-2.0) \
-          $(shell pkg-config --libs gimpui-2.0) \
-          -lwebp
+CFLAGS  = $(shell pkg-config --cflags gtk+-2.0 gimp-2.0 libwebp)
+LFLAGS  = $(shell pkg-config --libs glib-2.0 gtk+-2.0 gimp-2.0 gimpui-2.0 libwebp)
 
 # File definitions
 SRC_FILES=$(wildcard $(SRC_DIR)/*.c)
