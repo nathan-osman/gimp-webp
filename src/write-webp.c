@@ -21,12 +21,30 @@
 #include <libgimp/gimp.h>
 #include <webp/encode.h>
 
-#include "export-dialog.h"
 #include "write-webp.h"
+
+/* Encodes the WebP image using the specified quality and flags. */
+size_t encode_webp(const uint8_t * input, uint8_t ** output,
+                   int width, int height, int alpha,
+                   float quality, WebPEncodingFlags flags)
+{
+    int stride = width * (alpha?4:3);
+
+    if(flags & WEBP_OPTIONS_LOSSLESS)
+    {
+        if(alpha) return WebPEncodeLosslessRGBA(input, width, height, stride, output);
+        else      return WebPEncodeLosslessRGB(input, width, height, stride, output);
+    }
+    else
+    {
+        if(alpha) return WebPEncodeRGBA(input, width, height, stride, quality, output);
+        else      return WebPEncodeRGB(input, width, height, stride, quality, output);
+    }
+}
 
 /* Attempts to create a WebP file from the specified drawable using
    the supplied quality and flags. */
-int write_webp(const gchar * filename, gint drawable_id, float quality, int flags)
+int write_webp(const gchar * filename, gint drawable_id, float quality, WebPEncodingFlags flags)
 {
     GimpDrawable * drawable;
     gint bpp;
@@ -71,19 +89,12 @@ int write_webp(const gchar * filename, gint drawable_id, float quality, int flag
 
     /* Now that we have the actual image data, encode it. Based on
        the flags provided, we create a lossy or lossless image. */
-    if(flags & WEBP_OPTIONS_LOSSLESS)
-        output_size = WebPEncodeLosslessRGB((const uint8_t *)image_data,
-                                            drawable->width,
-                                            drawable->height,
-                                            drawable->width * 3,
-                                            &raw_data);
-    else
-        output_size = WebPEncodeRGB((const uint8_t *)image_data,
-                                    drawable->width,
-                                    drawable->height,
-                                    drawable->width * 3,
-                                    quality,
-                                    &raw_data);
+    output_size = encode_webp((const uint8_t *)image_data,
+                              &raw_data,
+                              drawable->width,
+                              drawable->height,
+                              bpp == 4,
+                              quality, flags);
 
     /* Free the uncompressed image data. */
     free(image_data);

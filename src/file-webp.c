@@ -158,7 +158,7 @@ void run(const gchar * name,
         gint32 image_id, drawable_id;
         int status = 1;
         float quality;
-        int flags = 0;
+        WebPEncodingFlags flags = 0;
         GimpExportReturn export_ret;
 
         /* Check to make sure all of the parameters were supplied. */
@@ -177,7 +177,7 @@ void run(const gchar * name,
         export_ret = gimp_export_image(&image_id,
                                        &drawable_id,
                                        "WEBP",
-                                       GIMP_EXPORT_CAN_HANDLE_RGB);
+                                       GIMP_EXPORT_CAN_HANDLE_RGB | GIMP_EXPORT_CAN_HANDLE_ALPHA);
 
         /* If the user can successfully export or chose to ignore warnings, then
            we can continue with the export process. */

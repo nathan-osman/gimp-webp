@@ -25,11 +25,11 @@
 
 /* Stores values from the input controls. */
 struct webp_data {
-    int         response;
-    GtkObject * quality_scale;
-    GtkWidget * lossless;
-    float     * quality;
-    int       * flags;
+    int                 response;
+    GtkObject         * quality_scale;
+    GtkWidget         * lossless;
+    float             * quality;
+    WebPEncodingFlags * flags;
 };
 
 /* Handler for accepting or rejecting the dialog box. */
@@ -48,7 +48,7 @@ void on_response(GtkDialog * dialog,
         *(data->quality) = gtk_range_get_value(GTK_RANGE(hscale));
 
         /* Determine if the lossless checkbox is checked. */
-        if(gtk_toggle_button_get_mode(GTK_TOGGLE_BUTTON(data->lossless)) == TRUE)
+        if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(data->lossless)) == TRUE)
             *(data->flags) |= WEBP_OPTIONS_LOSSLESS;
 
         /* Indicate a positive response. */
@@ -59,7 +59,7 @@ void on_response(GtkDialog * dialog,
     gtk_main_quit();
 }
 
-int export_dialog(float * quality, int * flags)
+int export_dialog(float * quality, WebPEncodingFlags * flags)
 {
     struct webp_data data;
     GtkWidget * dialog;
@@ -100,12 +100,12 @@ int export_dialog(float * quality, int * flags)
 
     /* Create the checkbox. */
     lossless = gtk_check_button_new_with_label("Lossless");
-    gtk_box_pack_start(GTK_BOX(vbox), lossless, FALSE, FALSE, 6);
+    gtk_box_pack_start(GTK_BOX(vbox), lossless, FALSE, FALSE, 0);
     gtk_widget_show(lossless);
 
     /* Create the table. */
     table = gtk_table_new(1, 3, FALSE);
-    gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 6);
+    gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
     gtk_widget_show(table);
 
     /* Create the scale. */

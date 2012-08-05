@@ -19,6 +19,11 @@
 #ifndef FILE_WEBP_H
 #define FILE_WEBP_H
 
+/* Encoding flags. */
+typedef enum {
+    WEBP_OPTIONS_LOSSLESS = 1,
+} WebPEncodingFlags;
+
 extern const char BINARY_NAME[];
 extern const char SAVE_PROCEDURE[];
 

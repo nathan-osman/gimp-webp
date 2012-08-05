@@ -54,7 +54,7 @@ int read_webp(const gchar * filename)
     fclose(file);
 
     /* Perform the load procedure and free the raw data. */
-    image_data = WebPDecodeRGB(data, filesize, &width, &height);
+    image_data = WebPDecodeRGBA(data, filesize, &width, &height);
     free(data);
 
     /* Check to make sure that the load was successful. */
@@ -68,7 +68,7 @@ int read_webp(const gchar * filename)
     new_layer_id = gimp_layer_new(new_image_id,
                                   "Background",
                                   width, height,
-                                  GIMP_RGB_IMAGE,
+                                  GIMP_RGBA_IMAGE,
                                   100,
                                   GIMP_NORMAL_MODE);
 

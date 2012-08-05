@@ -21,6 +21,8 @@
 
 #include <glib.h>
 
-int write_webp(const gchar *, gint, float, int);
+#include "file-webp.h"
+
+int write_webp(const gchar *, gint, float, WebPEncodingFlags);
 
 #endif // WRITE_WEBP_H

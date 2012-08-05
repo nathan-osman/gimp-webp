@@ -19,9 +19,8 @@
 #ifndef EXPORT_DIALOG_H
 #define EXPORT_DIALOG_H
 
-/* Export flags. */
-#define WEBP_OPTIONS_LOSSLESS 1
+#include "file-webp.h"
 
-int export_dialog(float *, int *);
+int export_dialog(float *, WebPEncodingFlags *);
 
 #endif // EXPORT_DIALOG_H
