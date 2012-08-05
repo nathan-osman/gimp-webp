@@ -21,9 +21,12 @@
 #include <libgimp/gimp.h>
 #include <webp/encode.h>
 
+#include "export-dialog.h"
 #include "write-webp.h"
 
-int write_webp(const gchar * filename, gint drawable_id, float quality)
+/* Attempts to create a WebP file from the specified drawable using
+   the supplied quality and flags. */
+int write_webp(const gchar * filename, gint drawable_id, float quality, int flags)
 {
     GimpDrawable * drawable;
     gint bpp;
@@ -34,13 +37,13 @@ int write_webp(const gchar * filename, gint drawable_id, float quality)
     uint8_t * raw_data;
     FILE * file;
 
-    // Get the drawable
+    /* Use the drawable ID to get the drawable. */
     drawable = gimp_drawable_get(drawable_id);
 
-    // Get the BPP
+    /* Get the number of bits-per-pixel (BPP). */
     bpp = gimp_drawable_bpp(drawable_id);
 
-    // Get a pixel region from the layer
+    /* Get the entire contents of the drawable. */
     gimp_pixel_rgn_init(&rgn,
                         drawable,
                         0, 0,
@@ -48,40 +51,58 @@ int write_webp(const gchar * filename, gint drawable_id, float quality)
                         drawable->height,
                         FALSE, FALSE);
 
-    // Determine the size of the array of image data to get
-    // and allocate it.
+    /* Determine exactly how much space we need to allocate for
+       the contents of the image. Then allocate that amount. */
     data_size = drawable->width * drawable->height * bpp;
     image_data = malloc(data_size);
 
-    // Get the image data
+    if(!image_data)
+    {
+        gimp_drawable_detach(drawable);
+        return 0;
+    }
+
+    /* Now copy the image data to our array. */
     gimp_pixel_rgn_get_rect(&rgn,
                             (guchar *)image_data,
                             0, 0,
                             drawable->width,
                             drawable->height);
 
-    // We have the image data, now encode it.
-    output_size = WebPEncodeRGB((const uint8_t *)image_data,
-                                drawable->width,
-                                drawable->height,
-                                drawable->width * 3,
-                                quality,
-                                &raw_data);
+    /* Now that we have the actual image data, encode it. Based on
+       the flags provided, we create a lossy or lossless image. */
+    if(flags & WEBP_OPTIONS_LOSSLESS)
+    {
+        output_size = WebPEncodeLosslessRGB((const uint8_t *)image_data,
+                                            drawable->width,
+                                            drawable->height,
+                                            drawable->width * 3,
+                                            &raw_data);
+    }
+    else
+    {
+        output_size = WebPEncodeRGB((const uint8_t *)image_data,
+                                    drawable->width,
+                                    drawable->height,
+                                    drawable->width * 3,
+                                    quality,
+                                    &raw_data);
+    }
 
-    // Free the image data
+    /* Free the uncompressed image data. */
     free(image_data);
 
-    // Detach the drawable
+    /* Detach the drawable. (I'm not 100% sure what this does.) */
     gimp_drawable_detach(drawable);
 
-    // Make sure that the write was successful
-    if(output_size == FALSE)
+    /* Make sure that there was no error during the encoding process. */
+    if(!output_size)
     {
         free(raw_data);
         return 0;
     }
 
-    // Open the file
+    /* Open the file we are writing to. */
     file = fopen(filename, "wb");
     if(!file)
     {
@@ -89,7 +110,7 @@ int write_webp(const gchar * filename, gint drawable_id, float quality)
         return 0;
     }
 
-    // Write the data and be done with it.
+    /* Write the actual data to the file, free the data, and close the file. */
     fwrite(raw_data, output_size, 1, file);
     free(raw_data);
     fclose(file);

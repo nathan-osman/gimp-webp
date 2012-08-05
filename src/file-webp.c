@@ -191,7 +191,7 @@ void run(const gchar * name,
                 }
 
                 status = write_webp(param[3].data.d_string,
-                                    drawable_id, quality);
+                                    drawable_id, quality, flags);
                 gimp_image_delete(image_id);
 
                 break;
