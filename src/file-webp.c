@@ -158,6 +158,7 @@ void run(const gchar * name,
         gint32 image_id, drawable_id;
         int status = 1;
         float quality;
+        int flags = 0;
         GimpExportReturn export_ret;
 
         // Check to make sure all of the parameters were supplied
@@ -183,7 +184,7 @@ void run(const gchar * name,
             case GIMP_EXPORT_IGNORE:
 
                 // Now get the settings
-                if(!export_dialog(&quality))
+                if(!export_dialog(&quality, &flags))
                 {
                     return_values[0].data.d_status = GIMP_PDB_CANCEL;
                     return;

@@ -24,37 +24,39 @@
 extern const char SAVE_PROCEDURE[];
 extern const char BINARY_NAME[];
 
-// Response structure
+/* Stores values from the input controls. */
 struct webp_data {
-    int       * response;
+    int         response;
     GtkObject * quality_scale;
     float     * quality;
+    int       * flags;
 };
 
+/* Handler for accepting or rejecting the dialog box. */
 void on_response(GtkDialog * dialog,
                  gint response_id,
                  gpointer user_data)
 {
-    // Basically all we want to do is grab the value
-    // of the slider and store it in user_data.
-    struct webp_data * data = user_data;
-    GtkHScale * hscale = GIMP_SCALE_ENTRY_SCALE(data->quality_scale);
-    gdouble returned_quality;
-
-    // Get the value
-    returned_quality = gtk_range_get_value(GTK_RANGE(hscale));
-    *(data->quality) = returned_quality;
-
-    // Quit the loop
-    gtk_main_quit();
-
+    /* If the user has accepted the dialog, then copy the value of
+       the input controls to our structure. */
     if(response_id == GTK_RESPONSE_OK)
-        *(data->response) = 1;
+    {
+        struct webp_data * data = user_data;
+
+        /* Fetch the quality. */
+        GtkHScale * hscale = GIMP_SCALE_ENTRY_SCALE(data->quality_scale);
+        *(data->quality) = gtk_range_get_value(GTK_RANGE(hscale));
+
+        /* Indicate a positive response. */
+        data->response = 1;
+    }
+
+    /* Quit the loop. */
+    gtk_main_quit();
 }
 
 int export_dialog(float * quality)
 {
-    int response = 0;
     struct webp_data data;
     GtkWidget * dialog;
     GtkWidget * vbox;
@@ -106,7 +108,7 @@ int export_dialog(float * quality)
                                  NULL);
 
     // Connect to the response signal
-    data.response      = &response;
+    data.response      = 0;
     data.quality_scale = scale;
     data.quality       = quality;
 
@@ -116,8 +118,7 @@ int export_dialog(float * quality)
     // Show the dialog and run it
     gtk_widget_show(dialog);
     gimp_dialog_run(GIMP_DIALOG(dialog));
-
     gtk_widget_destroy(dialog);
 
-    return response;
+    return data.response;
 }

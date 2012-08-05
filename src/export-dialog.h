@@ -16,4 +16,7 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======================================================================*/
 
-int export_dialog(float *);
+#define WEBP_OPTIONS_ALPHA    1
+#define WEBP_OPTIONS_LOSSLESS 2
+
+int export_dialog(float *, int *);
