@@ -42,6 +42,7 @@ WebPPresetDescription preset_map[] = {
 
 /* Storage for grabbing data from the controls and populating the config. */
 typedef struct {
+    int          response;
     GtkWidget  * preset;
     GtkObject  * preset_quality;
     GtkWidget  * color_lossless;
@@ -63,49 +64,6 @@ WebPPreset get_webp_preset_from_description(const gchar * description)
     /* Either we found a match or we've reached the
        terminating entry in the map. */
     return i->id;
-}
-
-/* Handler for accepting or rejecting the dialog box. */
-void on_dialog_response(GtkDialog * dialog,
-                        gint response_id,
-                        WebPControls * controls)
-{
-    /* Do nothing if the user has cancelled the dialog box. */
-    if(response_id != GTK_RESPONSE_OK)
-        return;
-    
-    /* Determine which preset the user has selected (if any). */
-    gchar * selection = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(controls->preset));
-    
-    /* Look through our map to try to find a match. */
-    WebPPreset selected_preset = get_webp_preset_from_description(selection);
-    g_free(selection);
-    
-    /* Check to see if we found one. */
-    if(selected_preset != -1)
-    {
-        /* Load the preset. */
-        /* TODO: check for error here. */
-        WebPConfigPreset(controls->config,
-                         selected_preset,
-                         gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->preset_quality))));
-        return;
-    }
-    else
-        /* TODO: check for error here too. */
-        WebPConfigInit(controls->config);
-    
-    /* Otherwise, the user has selected the custom preset (which... really isn't
-       a preset :P) Fetch the lossless and quality values for the color channel. */
-    controls->config->lossless =
-      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(controls->color_lossless));
-    controls->config->quality =
-      gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->color_quality)));
-    
-    /* Do the same thing for the alpha channel. */
-    controls->config->alpha_quality =
-      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(controls->alpha_lossless))?
-      100:gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->alpha_quality)));
 }
 
 /* Utility method for filling preset list with values. */
@@ -198,6 +156,54 @@ void create_quality_widgets(const gchar * label_text,
         g_signal_connect(*lossless, "toggled", G_CALLBACK(on_lossless_toggled), *scale);
 }
 
+/* Handler for accepting or rejecting the dialog box. */
+void on_dialog_response(GtkWidget * dialog,
+                        gint response_id,
+                        WebPControls * controls)
+{
+    controls->response = response_id;
+    
+    /* Only do anything if the user has accepted the dialog. */
+    if(response_id == GTK_RESPONSE_OK)
+    {
+        /* Determine which preset the user has selected (if any). */
+        gchar * selection = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(controls->preset));
+        
+        /* Look through our map to try to find a match. */
+        WebPPreset selected_preset = get_webp_preset_from_description(selection);
+        g_free(selection);
+        
+        /* Check to see if we found one. */
+        if(selected_preset != -1)
+        {
+            /* Load the preset. */
+            /* TODO: check for error here. */
+            WebPConfigPreset(controls->config,
+                             selected_preset,
+                             gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->preset_quality))));
+        }
+        else
+        {
+            /* TODO: check for error here too. */
+            WebPConfigInit(controls->config);
+            
+            /* Otherwise, the user has selected the custom preset (which... really isn't
+               a preset :P) Fetch the lossless and quality values for the color channel. */
+            controls->config->lossless =
+              gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(controls->color_lossless));
+            controls->config->quality =
+              gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->color_quality)));
+            
+            /* Do the same thing for the alpha channel. */
+            controls->config->alpha_quality =
+              gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(controls->alpha_lossless))?
+              100:gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->alpha_quality)));
+        }
+    }
+    
+    gtk_widget_destroy(dialog);
+}
+
 /* Displays the dialog. */
 int export_dialog(WebPConfig * config)
 {
@@ -206,10 +212,10 @@ int export_dialog(WebPConfig * config)
     GtkWidget * separator;
     GtkWidget * preset_box;
     GtkWidget * preset_label;
-    GtkWidget * preset;
     WebPControls controls;
-    gint response;
-
+    
+    controls.config = config;
+    
     /* Create the dialog - using the new export dialog for Gimp 2.7+
        and falling back to a standard dialog for < Gimp 2.7. */
 #if (GIMP_MAJOR_VERSION == 2 && GIMP_MINOR_VERSION >= 7) || GIMP_MAJOR_VERSION > 2
@@ -251,12 +257,12 @@ int export_dialog(WebPConfig * config)
     gtk_widget_show(preset_label);
     
     /* Create the preset combo box. */
-    preset = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(preset_box), preset, TRUE, TRUE, 0);
-    gtk_widget_show(preset);
+    controls.preset = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(preset_box), controls.preset, TRUE, TRUE, 0);
+    gtk_widget_show(controls.preset);
     
     /* Add some presets. */
-    fill_preset_list(GTK_COMBO_BOX_TEXT(preset));
+    fill_preset_list(GTK_COMBO_BOX_TEXT(controls.preset));
     
     /* Create the controls for the channel options. */
     create_quality_widgets("Preset quality:",
@@ -279,10 +285,9 @@ int export_dialog(WebPConfig * config)
     g_signal_connect(dialog, "response", G_CALLBACK(on_dialog_response), &controls);
     g_signal_connect(dialog, "destroy",  G_CALLBACK(gtk_main_quit),      NULL);
 
-    /* Show the dialog and run it. */
+    /* Show the dialog and run the main loop. */
     gtk_widget_show(dialog);
-    response = gimp_dialog_run(GIMP_DIALOG(dialog));
-    gtk_widget_destroy(dialog);
+    gtk_main();
 
-    return response == GTK_RESPONSE_OK;
+    return controls.response == GTK_RESPONSE_OK;
 }

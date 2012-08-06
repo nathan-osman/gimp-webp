@@ -28,7 +28,7 @@ int on_write(const uint8_t * data,
              const WebPPicture * picture)
 {
     /* Obtain a pointer to our current file and write the contents to it. */
-    FILE * file = (FILE *)picture->custom_ptr;
+    FILE * file = *((FILE **)picture->custom_ptr);
     return fwrite(data, data_size, 1, file);
 }
 
@@ -36,7 +36,7 @@ int on_write(const uint8_t * data,
 int on_progress(int percent,
                 const WebPPicture * picture)
 {
-    return gimp_progress_update(percent);
+    return gimp_progress_update(percent / 100.0);
 }
 
 /* TODO: the code below needs more error checking. */
@@ -74,10 +74,10 @@ int write_webp(const gchar * filename,
     
     /* Prepare the WebPPicture structure for the encoding process later on. */
     WebPPictureInit(&picture);
-    picture.use_argb      = 1;
     picture.width         = drawable->width;
     picture.height        = drawable->height;
     picture.writer        = on_write;
+    picture.custom_ptr    = &file;
     picture.progress_hook = on_progress;
     
     /* Calculate the stride. */
@@ -119,9 +119,10 @@ int write_webp(const gchar * filename,
     
     status = WebPEncode(config, &picture);
     
-    /* Free the raw image data and close the file. */
+    /* Free the picture, raw image data, and close the file. */
+    WebPPictureFree(&picture);
     free(raw_data);
     fclose(file);
-    
+       
     return status;
 }

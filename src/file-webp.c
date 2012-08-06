@@ -178,7 +178,7 @@ void run(const gchar * name,
                                        &drawable_id,
                                        "WEBP",
                                        GIMP_EXPORT_CAN_HANDLE_RGB | GIMP_EXPORT_CAN_HANDLE_ALPHA);
-
+        
         /* If the user can successfully export or chose to ignore warnings, then
            we can continue with the export process. */
         switch(export_ret)
