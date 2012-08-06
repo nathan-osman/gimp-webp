@@ -87,6 +87,17 @@ void fill_preset_list(GtkComboBoxText * preset)
     gtk_combo_box_set_active(GTK_COMBO_BOX(preset), 0);
 }
 
+/* Event handler for toggling the enabled state of the scale
+   when the associated lossless checkbox is checked. */
+void on_lossless_toggled(GtkWidget * lossless,
+                         gpointer user_data)
+{
+    gboolean enabled = !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(lossless));
+    
+    /* Enable / disable the spinbox based on the checkbox. */
+    gimp_scale_entry_set_sensitive(GTK_OBJECT(user_data), enabled);
+}
+
 /* Utility method for creating the widgets for the color / alpha channels. */
 void create_channel_widgets(const gchar * label_text,
                             GtkBox * parent,
@@ -138,6 +149,9 @@ void create_channel_widgets(const gchar * label_text,
                                   0, TRUE, 0.0f, 0.0f,
                                   "Quality for encoding the channel",
                                   NULL);
+    
+    /* Toggle the scale when the lossless checkbox is toggled. */
+    g_signal_connect(*lossless, "toggled", G_CALLBACK(on_lossless_toggled), *scale);
 }
 
 /* Displays the dialog. */
