@@ -22,121 +22,106 @@
 
 #include "write-webp.h"
 
+/* Handler for writing the contents to the file. */
+int on_write(const uint8_t * data,
+             size_t data_size,
+             const WebPPicture * picture)
+{
+    /* Obtain a pointer to our current file and write the contents to it. */
+    FILE * file = (FILE *)picture->custom_ptr;
+    return fwrite(data, data_size, 1, file);
+}
+
+/* Handler for displaying encoding process. */
+int on_progress(int percent,
+                const WebPPicture * picture)
+{
+    return gimp_progress_update(percent);
+}
+
+/* TODO: the code below needs more error checking. */
+
 /* Writes the specified drawable to disk. */
 int write_webp(const gchar * filename,
                gint drawable_id,
                WebPConfig * config)
 {
-    GimpDrawable * drawable;
-    
-    /* Use the drawable ID to get the drawable. */
-    drawable = gimp_drawable_get(drawable_id);
-    
-    // The code below slots in here.
-    
-    /* Detach the drawable. (I'm not 100% sure what this does.) */
-    gimp_drawable_detach(drawable);
-    
-    return 1;
-}
-
-#if 0
-/* Encodes the WebP image using the specified quality and flags. */
-size_t encode_webp(const uint8_t * input, uint8_t ** output,
-                   int width, int height, int alpha,
-                   float quality, WebPEncodingFlags flags)
-{
-    int stride = width * (alpha?4:3);
-
-    if(flags & WEBP_OPTIONS_LOSSLESS)
-    {
-        if(alpha) return WebPEncodeLosslessRGBA(input, width, height, stride, output);
-        else      return WebPEncodeLosslessRGB(input, width, height, stride, output);
-    }
-    else
-    {
-        if(alpha) return WebPEncodeRGBA(input, width, height, stride, quality, output);
-        else      return WebPEncodeRGB(input, width, height, stride, quality, output);
-    }
-}
-
-/* Attempts to create a WebP file from the specified drawable using
-   the supplied quality and flags. */
-int write_webp(const gchar * filename, gint drawable_id, float quality, WebPEncodingFlags flags)
-{
-    GimpDrawable * drawable;
     gint bpp;
-    GimpPixelRgn rgn;
-    long int data_size;
-    void * image_data;
-    size_t output_size;
-    uint8_t * raw_data;
+    GimpDrawable * drawable;
+    GimpPixelRgn region;
+    long int raw_data_size;
+    void * raw_data;
+    WebPPicture picture;
     FILE * file;
-
-    /* Use the drawable ID to get the drawable. */
-    drawable = gimp_drawable_get(drawable_id);
-
-    /* Get the number of bits-per-pixel (BPP). */
+    int stride;
+    int status;
+    
+    gimp_progress_init_printf("Encoding %s", filename);
+    
+    /* Get the number of bytes-per-pixel (BPP). This tells
+       us if we are dealing with an alpha channel or not. */
     bpp = gimp_drawable_bpp(drawable_id);
-
-    /* Get the entire contents of the drawable. */
-    gimp_pixel_rgn_init(&rgn,
+    
+    /* Use the drawable ID to get the drawable and then
+       the region which is the entire visible image. */
+    drawable = gimp_drawable_get(drawable_id);
+    gimp_pixel_rgn_init(&region,
                         drawable,
                         0, 0,
                         drawable->width,
                         drawable->height,
                         FALSE, FALSE);
-
+    
+    /* Prepare the WebPPicture structure for the encoding process later on. */
+    WebPPictureInit(&picture);
+    picture.use_argb      = 1;
+    picture.width         = drawable->width;
+    picture.height        = drawable->height;
+    picture.writer        = on_write;
+    picture.progress_hook = on_progress;
+    
+    /* Calculate the stride. */
+    stride = drawable->width * bpp;
+    
     /* Determine exactly how much space we need to allocate for
        the contents of the image. Then allocate that amount. */
-    data_size = drawable->width * drawable->height * bpp;
-    image_data = malloc(data_size);
-
-    if(!image_data)
+    raw_data_size = drawable->width * drawable->height * bpp;
+    raw_data = malloc(raw_data_size);
+    
+    /* Ensure the allocation was successful. */
+    if(!raw_data)
     {
         gimp_drawable_detach(drawable);
         return 0;
     }
-
+    
     /* Now copy the image data to our array. */
-    gimp_pixel_rgn_get_rect(&rgn,
-                            (guchar *)image_data,
+    gimp_pixel_rgn_get_rect(&region,
+                            (guchar *)raw_data,
                             0, 0,
                             drawable->width,
                             drawable->height);
-
-    /* Now that we have the actual image data, encode it. Based on
-       the flags provided, we create a lossy or lossless image. */
-    output_size = encode_webp((const uint8_t *)image_data,
-                              &raw_data,
-                              drawable->width,
-                              drawable->height,
-                              bpp == 4,
-                              quality, flags);
-
-    /* Free the uncompressed image data. */
-    free(image_data);
-
-    /* Detach the drawable. (I'm not 100% sure what this does.) */
+    
+    /* Detach the drawable. We have the image data now. */
     gimp_drawable_detach(drawable);
-
-    /* Make sure that there was no error during the encoding process. */
-    if(!output_size)
-        return 0;
-
-    /* Open the file we are writing to. */
+    
+    /* Attempt to open the file we are writing to. */
     file = fopen(filename, "wb");
     if(!file)
     {
         free(raw_data);
         return 0;
     }
-
-    /* Write the actual data to the file, free the data, and close the file. */
-    fwrite(raw_data, output_size, 1, file);
+    
+    /* Now perform the encoding procedure. */
+    if(bpp == 3) WebPPictureImportRGB(&picture, raw_data, stride);
+    else         WebPPictureImportRGBA(&picture, raw_data, stride);
+    
+    status = WebPEncode(config, &picture);
+    
+    /* Free the raw image data and close the file. */
     free(raw_data);
     fclose(file);
-
-    return 1;
+    
+    return status;
 }
-#endif
