@@ -16,9 +16,10 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======================================================================*/
 
-#include <string.h>
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
+#include <string.h>
+#include <webp/encode.h>
 
 #include "read-webp.h"
 #include "write-webp.h"
@@ -65,7 +66,7 @@ void query()
         { GIMP_PDB_INT32,    "run-mode",     "Interactive, non-interactive" },
         { GIMP_PDB_IMAGE,    "image",        "Input image" },
         { GIMP_PDB_DRAWABLE, "drawable",     "Drawable to save" },
-        { GIMP_PDB_STRING,   "filename",     "The name of the file to save the image in" },
+        { GIMP_PDB_STRING,   "filename",     "The name of the file to save the image to" },
         { GIMP_PDB_STRING,   "raw-filename", "The name entered" },
         { GIMP_PDB_FLOAT,    "quality",      "Quality of the image (0 <= quality <= 100)" }
     };
@@ -156,9 +157,8 @@ void run(const gchar * name,
     else if(!strcmp(name, SAVE_PROCEDURE))
     {
         gint32 image_id, drawable_id;
-        int status = 1;
-        float quality;
-        WebPEncodingFlags flags = 0;
+        int status = 0;
+        WebPConfig config;
         GimpExportReturn export_ret;
 
         /* Check to make sure all of the parameters were supplied. */
@@ -187,15 +187,14 @@ void run(const gchar * name,
             case GIMP_EXPORT_IGNORE:
 
                 /* Display the export settings dialog, */
-                if(!export_dialog(&quality, &flags))
+                if(!export_dialog(&config))
                 {
                     return_values[0].data.d_status = GIMP_PDB_CANCEL;
                     return;
                 }
 
                 /* Make an attempt to write the image to disk. */
-                status = write_webp(param[3].data.d_string,
-                                    drawable_id, quality, flags);
+                status = write_webp(param[3].data.d_string, drawable_id, &config);
                 gimp_image_delete(image_id);
 
                 break;

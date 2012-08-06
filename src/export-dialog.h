@@ -19,8 +19,12 @@
 #ifndef EXPORT_DIALOG_H
 #define EXPORT_DIALOG_H
 
-#include "file-webp.h"
+#include <webp/encode.h>
 
-int export_dialog(float *, WebPEncodingFlags *);
+/* Displays the export dialog and returns 1 if the user
+   accepted the export and 0 if the user cancelled the
+   process. The chosen parameters are entered into the
+   specified config. */
+int export_dialog(WebPConfig *);
 
 #endif // EXPORT_DIALOG_H

@@ -20,9 +20,8 @@
 #define WRITE_WEBP_H
 
 #include <glib.h>
+#include <webp/encode.h>
 
-#include "file-webp.h"
-
-int write_webp(const gchar *, gint, float, WebPEncodingFlags);
+int write_webp(const gchar *, gint, WebPConfig *);
 
 #endif // WRITE_WEBP_H

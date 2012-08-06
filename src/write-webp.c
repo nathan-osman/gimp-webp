@@ -19,10 +19,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libgimp/gimp.h>
-#include <webp/encode.h>
 
 #include "write-webp.h"
 
+/* Writes the specified drawable to disk. */
+int write_webp(const gchar * filename,
+               gint drawable_id,
+               WebPConfig * config)
+{
+    GimpDrawable * drawable;
+    
+    /* Use the drawable ID to get the drawable. */
+    drawable = gimp_drawable_get(drawable_id);
+    
+    // The code below slots in here.
+    
+    /* Detach the drawable. (I'm not 100% sure what this does.) */
+    gimp_drawable_detach(drawable);
+    
+    return 1;
+}
+
+#if 0
 /* Encodes the WebP image using the specified quality and flags. */
 size_t encode_webp(const uint8_t * input, uint8_t ** output,
                    int width, int height, int alpha,
@@ -121,3 +139,4 @@ int write_webp(const gchar * filename, gint drawable_id, float quality, WebPEnco
 
     return 1;
 }
+#endif

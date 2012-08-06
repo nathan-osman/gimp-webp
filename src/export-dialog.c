@@ -19,9 +19,10 @@
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
 #include <libgimpbase/gimpbase.h>
-#include <webp/encode.h>
+#include <string.h>
 
 #include "export-dialog.h"
+#include "file-webp.h"
 
 /* Map of WebP preset values to text descriptions. */
 typedef struct {
@@ -36,39 +37,75 @@ WebPPresetDescription preset_map[] = {
     { WEBP_PRESET_DRAWING, "Drawing" },
     { WEBP_PRESET_ICON,    "Icon"    },
     { WEBP_PRESET_TEXT,    "Text"    },
-    { 0, NULL }
+    { -1, NULL }
 };
 
-/* Stores values from the input controls. */
-struct webp_data {
-    GtkObject         * quality_scale;
-    GtkWidget         * lossless;
-    float             * quality;
-    WebPEncodingFlags * flags;
-};
+/* Storage for grabbing data from the controls and populating the config. */
+typedef struct {
+    GtkWidget  * preset;
+    GtkObject  * preset_quality;
+    GtkWidget  * color_lossless;
+    GtkObject  * color_quality;
+    GtkWidget  * alpha_lossless;
+    GtkObject  * alpha_quality;
+    WebPConfig * config;
+} WebPControls;
+
+/* Utility method for obtaining a WebPPreset given its descriptive name.
+   Returns -1 if the name was not found. */
+WebPPreset get_webp_preset_from_description(const gchar * description)
+{
+    /* Loop through the map, comparing the strings. */
+    WebPPresetDescription * i = preset_map;
+    while(i->description && !strcmp(i->description, description))
+        ++i;
+    
+    /* Either we found a match or we've reached the
+       terminating entry in the map. */
+    return i->id;
+}
 
 /* Handler for accepting or rejecting the dialog box. */
-void on_response(GtkDialog * dialog,
-                 gint response_id,
-                 gpointer user_data)
+void on_dialog_response(GtkDialog * dialog,
+                        gint response_id,
+                        WebPControls * controls)
 {
-    /* If the user has accepted the dialog, then copy the value of
-       the input controls to our structure. */
-    if(response_id == GTK_RESPONSE_OK)
+    /* Do nothing if the user has cancelled the dialog box. */
+    if(response_id != GTK_RESPONSE_OK)
+        return;
+    
+    /* Determine which preset the user has selected (if any). */
+    gchar * selection = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(controls->preset));
+    
+    /* Look through our map to try to find a match. */
+    WebPPreset selected_preset = get_webp_preset_from_description(selection);
+    g_free(selection);
+    
+    /* Check to see if we found one. */
+    if(selected_preset != -1)
     {
-        struct webp_data * data = user_data;
-
-        /* Fetch the quality. */
-        GtkHScale * hscale = GIMP_SCALE_ENTRY_SCALE(data->quality_scale);
-        *(data->quality) = gtk_range_get_value(GTK_RANGE(hscale));
-
-        /* Determine if the lossless checkbox is checked. */
-        if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(data->lossless)) == TRUE)
-            *(data->flags) |= WEBP_OPTIONS_LOSSLESS;
+        /* Load the preset. */
+        /* TODO: check for error here. */
+        WebPConfigPreset(controls->config,
+                         selected_preset,
+                         gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->preset_quality))));
+        return;
     }
-
-    /* Quit the loop. */
-    gtk_main_quit();
+    else
+        /* TODO: check for error here too. */
+        WebPConfigInit(controls->config);
+    
+    /* Otherwise, the user has selected the custom preset (which... really isn't
+       a preset :P) Fetch the lossless and quality values for the color channel. */
+    controls->config->lossless =
+      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(controls->color_lossless));
+    controls->config->quality =
+      gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->color_quality)));
+    
+    /* Do the same thing for the alpha channel. */
+    controls->config->alpha_quality =
+      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(controls->alpha_lossless))?
+      100:gtk_range_get_value(GTK_RANGE(GIMP_SCALE_ENTRY_SCALE(controls->alpha_quality)));
 }
 
 /* Utility method for filling preset list with values. */
@@ -83,7 +120,10 @@ void fill_preset_list(GtkComboBoxText * preset)
         ++i;
     }
     
-    /* Activate the first item in the list (default). */
+    /* Insert "custom" item. */
+    gtk_combo_box_text_append_text(preset, "Custom");
+    
+    /* Activate the first item in the list ("Default"). */
     gtk_combo_box_set_active(GTK_COMBO_BOX(preset), 0);
 }
 
@@ -98,8 +138,8 @@ void on_lossless_toggled(GtkWidget * lossless,
     gimp_scale_entry_set_sensitive(GTK_OBJECT(user_data), enabled);
 }
 
-/* Utility method for creating the widgets for the color / alpha channels. */
-void create_channel_widgets(const gchar * label_text,
+/* Utility method for creating scale (and optionally lossless checkbox). */
+void create_quality_widgets(const gchar * label_text,
                             GtkBox * parent,
                             GtkWidget ** lossless,
                             GtkObject ** scale)
@@ -131,10 +171,13 @@ void create_channel_widgets(const gchar * label_text,
     gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 0);
     gtk_widget_show(vbox);
     
-    /* Create the checkbox. */
-    *lossless = gtk_check_button_new_with_label("Lossless");
-    gtk_box_pack_start(GTK_BOX(vbox), *lossless, FALSE, FALSE, 0);
-    gtk_widget_show(*lossless);
+    /* Create the checkbox if requested. */
+    if(lossless)
+    {
+        *lossless = gtk_check_button_new_with_label("Lossless");
+        gtk_box_pack_start(GTK_BOX(vbox), *lossless, FALSE, FALSE, 0);
+        gtk_widget_show(*lossless);
+    }
 
     /* Create the table. */
     table = gtk_table_new(1, 3, FALSE);
@@ -151,28 +194,20 @@ void create_channel_widgets(const gchar * label_text,
                                   NULL);
     
     /* Toggle the scale when the lossless checkbox is toggled. */
-    g_signal_connect(*lossless, "toggled", G_CALLBACK(on_lossless_toggled), *scale);
+    if(lossless)
+        g_signal_connect(*lossless, "toggled", G_CALLBACK(on_lossless_toggled), *scale);
 }
 
 /* Displays the dialog. */
-int export_dialog(float * quality, WebPEncodingFlags * flags)
+int export_dialog(WebPConfig * config)
 {
-    struct webp_data data;
     GtkWidget * dialog;
     GtkWidget * description_label;
     GtkWidget * separator;
     GtkWidget * preset_box;
     GtkWidget * preset_label;
     GtkWidget * preset;
-    
-    /* Color channel options. */
-    GtkWidget * color_lossless;
-    GtkObject * color_scale;
-    
-    /* Alpha channel options. */
-    GtkWidget * alpha_lossless;
-    GtkObject * alpha_scale;
-    
+    WebPControls controls;
     gint response;
 
     /* Create the dialog - using the new export dialog for Gimp 2.7+
@@ -224,17 +259,25 @@ int export_dialog(float * quality, WebPEncodingFlags * flags)
     fill_preset_list(GTK_COMBO_BOX_TEXT(preset));
     
     /* Create the controls for the channel options. */
-    create_channel_widgets("Color channels:", GTK_BOX(GTK_DIALOG(dialog)->vbox), &color_lossless, &color_scale);
-    create_channel_widgets("Alpha channel:", GTK_BOX(GTK_DIALOG(dialog)->vbox), &alpha_lossless, &alpha_scale);
-
-    /* Connect to the response signal. */
-    data.quality_scale = color_scale;
-    data.lossless      = color_lossless;
-    data.quality       = quality;
-    data.flags         = flags;
-
-    g_signal_connect(dialog, "response", G_CALLBACK(on_response),   &data);
-    g_signal_connect(dialog, "destroy",  G_CALLBACK(gtk_main_quit), NULL);
+    create_quality_widgets("Preset quality:",
+                           GTK_BOX(GTK_DIALOG(dialog)->vbox),
+                           NULL,
+                           &controls.preset_quality);
+    
+    create_quality_widgets("Color channels:",
+                           GTK_BOX(GTK_DIALOG(dialog)->vbox),
+                           &controls.color_lossless,
+                           &controls.color_quality);
+    
+    create_quality_widgets("Alpha channel:",
+                           GTK_BOX(GTK_DIALOG(dialog)->vbox),
+                           &controls.alpha_lossless,
+                           &controls.alpha_quality);
+    
+    /* We need to store the response in the WebPControls structure
+       when the dialog box is accepted. */
+    g_signal_connect(dialog, "response", G_CALLBACK(on_dialog_response), &controls);
+    g_signal_connect(dialog, "destroy",  G_CALLBACK(gtk_main_quit),      NULL);
 
     /* Show the dialog and run it. */
     gtk_widget_show(dialog);
