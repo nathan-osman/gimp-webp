@@ -24,10 +24,9 @@ clean:
 	test ! -f $(TARGET) || rm $(TARGET)
 
 install:
-	mkdir -p $(DESTDIR)$(exec_prefix)/lib/gimp/2.0/plug-ins
-	cp $(TARGET) $(DESTDIR)$(exec_prefix)/lib/gimp/2.0/plug-ins
+	gimptool-2.0 --install-bin $(TARGET)
 
 uninstall:
-	rm $(DESTDIR)$(exec_prefix)/lib/gimp/2.0/plug-ins/$(TARGET)
+	gimptool-2.0 --uninstall-bin $(TARGET)
 
 .PHONY: clean install uninstall

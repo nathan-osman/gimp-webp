@@ -18,10 +18,9 @@
 
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
-#include <libgimpbase/gimpversion.h>
+#include <libgimpbase/gimpbase.h>
 
 #include "export-dialog.h"
-#include "file-webp.h"
 
 /* Stores values from the input controls. */
 struct webp_data {
@@ -59,18 +58,66 @@ void on_response(GtkDialog * dialog,
     gtk_main_quit();
 }
 
+/* Utility method for creating the widgets for the color / alpha channels. */
+void create_channel_widgets(const gchar * label_text,
+                            GtkBox * parent,
+                            GtkWidget ** lossless,
+                            GtkObject ** scale)
+{
+    GtkWidget * vbox;
+    GtkWidget * label;
+    GtkWidget * table;
+    
+    /* Create the vertical box. */
+    vbox = gtk_vbox_new(TRUE, 0);
+    gtk_box_pack_start(parent, vbox, FALSE, FALSE, 0);
+    gtk_widget_show(vbox);
+    
+    /* Create the label. */
+    label = gtk_label_new(label_text);
+    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+    gtk_widget_show(label);
+    
+    /* Create the checkbox. */
+    *lossless = gtk_check_button_new_with_label("Lossless");
+    gtk_box_pack_start(GTK_BOX(vbox), *lossless, FALSE, FALSE, 0);
+    gtk_widget_show(*lossless);
+
+    /* Create the table. */
+    table = gtk_table_new(1, 3, FALSE);
+    gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
+    gtk_widget_show(table);
+
+    /* Create the scale. */
+    *scale = gimp_scale_entry_new(GTK_TABLE(table), 0, 0,
+                                  "Quality:",
+                                  150, 0,
+                                  90.0f, 0.0f, 100.0f, 1.0f, 10.0f,
+                                  0, TRUE, 0.0f, 0.0f,
+                                  "Quality for encoding the channel",
+                                  NULL);
+}
+
+/* Displays the dialog. */
 int export_dialog(float * quality, WebPEncodingFlags * flags)
 {
     struct webp_data data;
     GtkWidget * dialog;
-    GtkWidget * vbox;
-    GtkWidget * label;
-    GtkWidget * table;
-    GtkObject * scale;
-    GtkWidget * lossless;
+    GtkWidget * description_label;
+    GtkWidget * preset_box;
+    GtkWidget * preset_label;
+    GtkWidget * preset;
+    
+    /* Color channel options. */
+    GtkWidget * color_lossless;
+    GtkObject * color_scale;
+    
+    /* Alpha channel options. */
+    GtkWidget * alpha_lossless;
+    GtkObject * alpha_scale;
 
     /* Create the dialog - using the new export dialog for Gimp 2.7+
-       and falling back to a GTK dialog for < Gimp 2.7. */
+       and falling back to a standard dialog for < Gimp 2.7. */
 #if (GIMP_MAJOR_VERSION == 2 && GIMP_MINOR_VERSION >= 7) || GIMP_MAJOR_VERSION > 2
     dialog = gimp_export_dialog_new("WebP",
                                     BINARY_NAME,
@@ -85,42 +132,45 @@ int export_dialog(float * quality, WebPEncodingFlags * flags)
                              GTK_STOCK_SAVE,   GTK_RESPONSE_OK,
                              NULL);
 #endif
-
-    /* Create the VBox. */
-    vbox = gtk_vbox_new(TRUE, 10);
-    gtk_container_set_border_width(GTK_CONTAINER(vbox), 10);
-    gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
-                       vbox, TRUE, TRUE, 2);
-    gtk_widget_show(vbox);
-
-    /* Create the label. */
-    label = gtk_label_new("The options below allow you to customize\nthe WebP image that is created.");
-    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 2);
-    gtk_widget_show(label);
-
-    /* Create the checkbox. */
-    lossless = gtk_check_button_new_with_label("Lossless");
-    gtk_box_pack_start(GTK_BOX(vbox), lossless, FALSE, FALSE, 0);
-    gtk_widget_show(lossless);
-
-    /* Create the table. */
-    table = gtk_table_new(1, 3, FALSE);
-    gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
-    gtk_widget_show(table);
-
-    /* Create the scale. */
-    scale = gimp_scale_entry_new(GTK_TABLE(table), 0, 0,
-                                 "Quality:",
-                                 150, 0,
-                                 90.0f, 0.0f, 100.0f, 1.0f, 10.0f,
-                                 0, TRUE, 0.0f, 0.0f,
-                                 "Quality for encoding the image",
-                                 NULL);
+    
+    /* Set the window border to 10 pixels and the spacing to 15 pixels. */
+    gtk_container_set_border_width(GTK_CONTAINER(dialog), 10);
+    gtk_box_set_spacing(GTK_BOX(GTK_DIALOG(dialog)->vbox), 15);
+    
+    /* Create the description label. */
+    description_label = gtk_label_new("The options below allow you to customize\nthe WebP image that is created.");
+    gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), description_label, FALSE, FALSE, 0);
+    gtk_widget_show(description_label);
+    
+    /* Create the horizontal box for the preset. */
+    preset_box = gtk_hbox_new(TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), preset_box, FALSE, FALSE, 0);
+    gtk_widget_show(preset_box);
+    
+    /* Create the preset label. */
+    preset_label = gtk_label_new("Preset:");
+    gtk_box_pack_start(GTK_BOX(preset_box), preset_label, FALSE, FALSE, 0);
+    gtk_widget_show(preset_label);
+    
+    /* Create the preset combo box. */
+    preset = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(preset_box), preset, TRUE, TRUE, 0);
+    gtk_widget_show(preset);
+    
+    /* Add some presets. */
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(preset), "Preset 1");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(preset), "Preset 2");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(preset), "Custom");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(preset), 0);
+    
+    /* Create the controls for the channel options. */
+    create_channel_widgets("Color channels:", GTK_BOX(GTK_DIALOG(dialog)->vbox), &color_lossless, &color_scale);
+    create_channel_widgets("Alpha channel:", GTK_BOX(GTK_DIALOG(dialog)->vbox), &alpha_lossless, &alpha_scale);
 
     /* Connect to the response signal. */
     data.response      = 0;
-    data.quality_scale = scale;
-    data.lossless      = lossless;
+    data.quality_scale = color_scale;
+    data.lossless      = color_lossless;
     data.quality       = quality;
     data.flags         = flags;
 
