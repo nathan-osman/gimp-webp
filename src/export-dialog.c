@@ -19,12 +19,28 @@
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
 #include <libgimpbase/gimpbase.h>
+#include <webp/encode.h>
 
 #include "export-dialog.h"
 
+/* Map of WebP preset values to text descriptions. */
+typedef struct {
+    WebPPreset id;
+    const gchar * description;
+} WebPPresetDescription;
+
+WebPPresetDescription preset_map[] = {
+    { WEBP_PRESET_DEFAULT, "Default" },
+    { WEBP_PRESET_PICTURE, "Picture" },
+    { WEBP_PRESET_PHOTO,   "Photo"   },
+    { WEBP_PRESET_DRAWING, "Drawing" },
+    { WEBP_PRESET_ICON,    "Icon"    },
+    { WEBP_PRESET_TEXT,    "Text"    },
+    { 0, NULL }
+};
+
 /* Stores values from the input controls. */
 struct webp_data {
-    int                 response;
     GtkObject         * quality_scale;
     GtkWidget         * lossless;
     float             * quality;
@@ -49,13 +65,26 @@ void on_response(GtkDialog * dialog,
         /* Determine if the lossless checkbox is checked. */
         if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(data->lossless)) == TRUE)
             *(data->flags) |= WEBP_OPTIONS_LOSSLESS;
-
-        /* Indicate a positive response. */
-        data->response = 1;
     }
 
     /* Quit the loop. */
     gtk_main_quit();
+}
+
+/* Utility method for filling preset list with values. */
+void fill_preset_list(GtkComboBoxText * preset)
+{
+    /* Loop through the preset map until we reach an entry
+       with a NULL description. */
+    WebPPresetDescription * i = preset_map;
+    while(i->description)
+    {
+        gtk_combo_box_text_append_text(preset, i->description);
+        ++i;
+    }
+    
+    /* Activate the first item in the list (default). */
+    gtk_combo_box_set_active(GTK_COMBO_BOX(preset), 0);
 }
 
 /* Utility method for creating the widgets for the color / alpha channels. */
@@ -64,19 +93,32 @@ void create_channel_widgets(const gchar * label_text,
                             GtkWidget ** lossless,
                             GtkObject ** scale)
 {
+    GtkWidget * hbox;
+    GtkWidget * alignment;
     GtkWidget * vbox;
     GtkWidget * label;
     GtkWidget * table;
     
-    /* Create the vertical box. */
-    vbox = gtk_vbox_new(TRUE, 0);
-    gtk_box_pack_start(parent, vbox, FALSE, FALSE, 0);
-    gtk_widget_show(vbox);
-    
     /* Create the label. */
     label = gtk_label_new(label_text);
-    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
+    gtk_box_pack_start(parent, label, FALSE, FALSE, 0);
     gtk_widget_show(label);
+    
+    /* Create the horizontal box. */
+    hbox = gtk_hbox_new(FALSE, 0);
+    gtk_box_pack_start(parent, hbox, FALSE, FALSE, 0);
+    gtk_widget_show(hbox);
+    
+    /* Insert the spacer. */
+    alignment = gtk_alignment_new(0.0f, 0.0f, 1.0f, 1.0f);
+    gtk_box_pack_start(GTK_BOX(hbox), alignment, FALSE, FALSE, 10);
+    gtk_widget_show(alignment);
+    
+    /* Create the vertical box. */
+    vbox = gtk_vbox_new(FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 0);
+    gtk_widget_show(vbox);
     
     /* Create the checkbox. */
     *lossless = gtk_check_button_new_with_label("Lossless");
@@ -104,6 +146,7 @@ int export_dialog(float * quality, WebPEncodingFlags * flags)
     struct webp_data data;
     GtkWidget * dialog;
     GtkWidget * description_label;
+    GtkWidget * separator;
     GtkWidget * preset_box;
     GtkWidget * preset_label;
     GtkWidget * preset;
@@ -115,6 +158,8 @@ int export_dialog(float * quality, WebPEncodingFlags * flags)
     /* Alpha channel options. */
     GtkWidget * alpha_lossless;
     GtkObject * alpha_scale;
+    
+    gint response;
 
     /* Create the dialog - using the new export dialog for Gimp 2.7+
        and falling back to a standard dialog for < Gimp 2.7. */
@@ -142,10 +187,14 @@ int export_dialog(float * quality, WebPEncodingFlags * flags)
     gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), description_label, FALSE, FALSE, 0);
     gtk_widget_show(description_label);
     
-    /* Create the horizontal box for the preset. */
-    preset_box = gtk_hbox_new(TRUE, 0);
+    /* Create the horizontal box and separator for the preset. */
+    preset_box = gtk_hbox_new(FALSE, 20);
     gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), preset_box, FALSE, FALSE, 0);
     gtk_widget_show(preset_box);
+    
+    separator = gtk_hseparator_new();
+    gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), separator, FALSE, FALSE, 0);
+    gtk_widget_show(separator);
     
     /* Create the preset label. */
     preset_label = gtk_label_new("Preset:");
@@ -158,17 +207,13 @@ int export_dialog(float * quality, WebPEncodingFlags * flags)
     gtk_widget_show(preset);
     
     /* Add some presets. */
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(preset), "Preset 1");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(preset), "Preset 2");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(preset), "Custom");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(preset), 0);
+    fill_preset_list(GTK_COMBO_BOX_TEXT(preset));
     
     /* Create the controls for the channel options. */
     create_channel_widgets("Color channels:", GTK_BOX(GTK_DIALOG(dialog)->vbox), &color_lossless, &color_scale);
     create_channel_widgets("Alpha channel:", GTK_BOX(GTK_DIALOG(dialog)->vbox), &alpha_lossless, &alpha_scale);
 
     /* Connect to the response signal. */
-    data.response      = 0;
     data.quality_scale = color_scale;
     data.lossless      = color_lossless;
     data.quality       = quality;
@@ -179,8 +224,8 @@ int export_dialog(float * quality, WebPEncodingFlags * flags)
 
     /* Show the dialog and run it. */
     gtk_widget_show(dialog);
-    gimp_dialog_run(GIMP_DIALOG(dialog));
+    response = gimp_dialog_run(GIMP_DIALOG(dialog));
     gtk_widget_destroy(dialog);
 
-    return data.response;
+    return response == GTK_RESPONSE_OK;
 }
