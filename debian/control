@@ -9,5 +9,6 @@ Homepage: https://launchpad.net/gimp-webp
 Package: gimp-webp
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: A Gimp plugin that provides WebP support.
- This plugin allows the Gimp to open and save images compressed using the WebP image format.
+Description: Gimp plugin that provides WebP support.
+ This plugin allows the Gimp to open and save images compressed using the WebP
+ image format.

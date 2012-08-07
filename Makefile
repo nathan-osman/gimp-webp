@@ -1,11 +1,12 @@
 # Predefined constants
-CC      = gcc
-TARGET  = file-webp
-SRC_DIR = src
-OBJ_DIR = obj
-CFLAGS  = $(shell pkg-config --cflags gtk+-2.0 gimp-2.0 libwebp)\
-          -Wall
-LFLAGS  = $(shell pkg-config --libs glib-2.0 gtk+-2.0 gimp-2.0 gimpui-2.0 libwebp)
+CC         = gcc
+SRC_DIR    = src
+OBJ_DIR    = obj
+CFLAGS     = $(shell pkg-config --cflags gtk+-2.0 gimp-2.0 libwebp)\
+             -Wall
+LFLAGS     = $(shell pkg-config --libs glib-2.0 gtk+-2.0 gimp-2.0 gimpui-2.0 libwebp)
+TARGET     = file-webp
+PLUGIN_DIR = $(shell pkg-config --variable=gimplibdir gimp-2.0)/plug-ins
 
 # File definitions
 SRC_FILES=$(wildcard $(SRC_DIR)/*.c)
@@ -25,9 +26,10 @@ clean:
 	test ! -f $(TARGET) || rm $(TARGET)
 
 install:
-	gimptool-2.0 --install-bin $(TARGET)
+	mkdir -p $(DESTDIR)$(PLUGIN_DIR)
+	cp $(TARGET) $(DESTDIR)$(PLUGIN_DIR)
 
 uninstall:
-	gimptool-2.0 --uninstall-bin $(TARGET)
+	test ! -f $(DESTDIR)$(PLUGIN_DIRN)/$(TARGET) || rm $(DESTDIR)$(PLUGIN_DIR)/$(TARGET)
 
 .PHONY: clean install uninstall

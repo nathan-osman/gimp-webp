@@ -1,3 +1,12 @@
+gimp-webp (0.2-1) precise; urgency=low
+
+  * Added support for lossless WebP images.
+  * Added support for reading and writing images with alpha channels.
+  * Added preset selection to export dialog.
+  * Progress is now displayed for exporting images.
+
+ -- Nathan Osman <admin@quickmediasolutions.com>  Tue, 07 Aug 2012 16:12:19 -0700
+
 gimp-webp (0.1.1-1) precise; urgency=low
 
   * Updated to support Gimp 2.8
