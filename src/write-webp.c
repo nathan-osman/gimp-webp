@@ -22,6 +22,27 @@
 
 #include "write-webp.h"
 
+/* Utility method for returning an error message from a WebP error code. */
+const char * webp_error_string(WebPEncodingError error)
+{
+    switch(error)
+    {
+        case VP8_ENC_OK:                            return "no error";
+        case VP8_ENC_ERROR_OUT_OF_MEMORY:           return "out of memory";
+        case VP8_ENC_ERROR_BITSTREAM_OUT_OF_MEMORY: return "not enough memory to flush bits";
+        case VP8_ENC_ERROR_NULL_PARAMETER:          return "NULL parameter";
+        case VP8_ENC_ERROR_INVALID_CONFIGURATION:   return "invalid configuration";
+        case VP8_ENC_ERROR_BAD_DIMENSION:           return "bad image dimensions";
+        case VP8_ENC_ERROR_PARTITION0_OVERFLOW:     return "partition is bigger than 512K";
+        case VP8_ENC_ERROR_PARTITION_OVERFLOW:      return "partition is bigger than 16M";
+        case VP8_ENC_ERROR_BAD_WRITE:               return "unable to flush bytes";
+        case VP8_ENC_ERROR_FILE_TOO_BIG:            return "file is larger than 4GiB";
+        case VP8_ENC_ERROR_USER_ABORT:              return "user aborted encoding";
+        case VP8_ENC_ERROR_LAST:                    return "list terminator";
+        default:                                    return "unknown error";
+    }
+}
+
 /* Handler for writing the contents to the file. */
 int on_write(const uint8_t * data,
              size_t data_size,
@@ -74,6 +95,7 @@ int write_webp(const gchar * filename,
     
     /* Prepare the WebPPicture structure for the encoding process later on. */
     WebPPictureInit(&picture);
+    picture.use_argb      = config->lossless;
     picture.width         = drawable->width;
     picture.height        = drawable->height;
     picture.writer        = on_write;
@@ -114,8 +136,8 @@ int write_webp(const gchar * filename,
     }
     
     /* Now perform the encoding procedure. */
-    if(bpp == 3) WebPPictureImportRGB(&picture, raw_data, stride);
-    else         WebPPictureImportRGBA(&picture, raw_data, stride);
+    if(bpp == 3) status = WebPPictureImportRGB(&picture, raw_data, stride);
+    else         status = WebPPictureImportRGBA(&picture, raw_data, stride);
     
     status = WebPEncode(config, &picture);
     
