@@ -279,7 +279,8 @@ int export_dialog(WebPConfig * config)
     gtk_box_set_spacing(GTK_BOX(GTK_DIALOG(controls.dialog)->vbox), 5);
     
     /* Create the description label. */
-    description_label = gtk_label_new("The options below allow you to customize\nthe WebP image that is created.");
+    description_label = gtk_label_new("The options below allow you to customize the WebP image\nthat is created.");
+    gtk_misc_set_alignment(GTK_MISC(description_label), 0, 0);
     gtk_box_pack_start(GTK_BOX(GTK_DIALOG(controls.dialog)->vbox), description_label, FALSE, FALSE, 0);
     gtk_widget_show(description_label);
     
