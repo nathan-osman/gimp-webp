@@ -28,8 +28,8 @@ int on_write(const uint8_t * data,
              const WebPPicture * picture)
 {
     /* Obtain a pointer to our current file and write the contents to it. */
-    FILE * file = *((FILE **)picture->custom_ptr);
-    return fwrite(data, data_size, 1, file);
+    FILE ** file = (FILE **)picture->custom_ptr;
+    return fwrite(data, data_size, 1, *file);
 }
 
 /* Handler for displaying encoding process. */
