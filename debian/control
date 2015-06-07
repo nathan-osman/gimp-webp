@@ -1,14 +1,15 @@
 Source: gimp-webp
-Section: web
+Section: graphics
 Priority: extra
-Maintainer: Nathan Osman <admin@quickmediasolutions.com>
-Build-Depends: debhelper (>= 7.0.50~), libgimp2.0-dev, libwebp-dev
-Standards-Version: 3.9.3
-Homepage: https://launchpad.net/gimp-webp
+Maintainer: Nathan Osman <nathan@quickmediasolutions.com>
+Build-Depends: debhelper (>= 9), libgimp2.0-dev, libwebp-dev
+Standards-Version: 3.9.5
+Homepage: https://github.com/nathan-osman/gimp-webp
 
 Package: gimp-webp
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Gimp plugin that provides WebP support.
- This plugin allows the Gimp to open and save images compressed using the WebP
- image format.
+Description: Gimp plugin providing WebP load and export
+ This plugin provides Gimp with the ability to load and export WebP images.
+ During export, a dialog is presented that provides access to image quality
+ settings.
