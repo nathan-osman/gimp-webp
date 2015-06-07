@@ -1,20 +1,20 @@
-/*=======================================================================
-              WebP load / save plugin for the GIMP
-                 Copyright 2012 - Nathan Osman
-
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-=======================================================================*/
+/**
+ * gimp-webp - WebP Plugin for the GIMP
+ * Copyright (C) 2015  Nathan Osman
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
@@ -178,7 +178,7 @@ void run(const gchar * name,
                                        &drawable_id,
                                        "WEBP",
                                        GIMP_EXPORT_CAN_HANDLE_RGB | GIMP_EXPORT_CAN_HANDLE_ALPHA);
-        
+
         /* If the user can successfully export or chose to ignore warnings, then
            we can continue with the export process. */
         switch(export_ret)
