@@ -24,3 +24,18 @@ set(SRC
 # Build the file-webp executable
 add_executable(file-webp ${SRC})
 target_link_libraries(file-webp ${GIMP_LIBRARIES})
+
+# In order to determine the correct installation directory, we need to directly
+# invoke pkg-config to obtain the lib/ directory
+execute_process(COMMAND
+    ${PKG_CONFIG_EXECUTABLE} --variable=gimplibdir gimp-2.0
+    RESULT_VARIABLE PKG_CONFIG_RESULT
+    OUTPUT_VARIABLE GIMP_LIB_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+# Only set an installation directory if the command succeeded
+if(PKG_CONFIG_RESULT)
+    message(WARNING "gimplibdir not set, install target unavailable")
+else()
+    install(TARGETS file-webp RUNTIME DESTINATION "${GIMP_LIB_DIR}/plug-ins")
+endif()
