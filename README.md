@@ -6,8 +6,8 @@ This plugin provides [Gimp](https://developers.google.com/speed/webp/) with the 
 
 In order to build this plugin, you will need the following tools and libraries installed:
 
- - [CMake 2.8.9+](http://www.cmake.org/)
- - Gimp 2.6+ development files (`libgimp2.0-dev` on Ubuntu)
+ - [CMake 2.8.12+](http://www.cmake.org/)
+ - Gimp 2.8+ development files (`libgimp2.0-dev` on Ubuntu)
  - Webp 0.4+ development files (`libwebp-dev` on Ubuntu)
 
 The build process consists of:
@@ -19,4 +19,8 @@ The build process consists of:
 
 ### Installation
 
-[TODO]
+On most *nix platforms, installation is as simple as:
+
+    sudo make install
+
+If you don't have root privileges, you can copy the `src/file-webp` binary to `~/.gimp-2.8/plug-ins/`.
