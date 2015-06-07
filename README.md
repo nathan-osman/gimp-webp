@@ -1,6 +1,10 @@
 ## gimp-webp
 
-This plugin provides [Gimp](https://developers.google.com/speed/webp/) with the ability to load and export WebP images. During export, a dialog is presented that provides access to alpha channel and image quality settings. The plugin is designed to run on all platforms currently supported by the Gimp.
+This plugin provides [Gimp](https://developers.google.com/speed/webp/) with the ability to load and export WebP images. During export, a dialog is presented that provides access to image quality settings.
+
+![Export Dialog](http://i.stack.imgur.com/zQD0G.png)
+
+The plugin is designed to run on all platforms currently supported by the Gimp.
 
 ### Building
 
