@@ -117,97 +117,96 @@ void run(const gchar * name,
          gint * nreturn_vals,
          GimpParam ** return_vals)
 {
-    /* Create the return value. */
-    static GimpParam return_values[2];
+    static GimpParam  values[1];
+    GimpRunMode       run_mode;
+    GimpPDBStatusType status = GIMP_PDB_SUCCESS;
+    gint32            image_ID;
+    gint32            drawable_ID;
+
+    /* Determine the current run mode */
+    run_mode = param[0].data.d_int32;
+
+    /* Fill in the return values */
     *nreturn_vals = 1;
-    *return_vals  = return_values;
+    *return_vals  = values;
+    values[0].type          = GIMP_PDB_STATUS;
+    values[0].data.d_status = GIMP_PDB_EXECUTION_ERROR;
 
-    /* Set the return value to success by default. */
-    return_values[0].type          = GIMP_PDB_STATUS;
-    return_values[0].data.d_status = GIMP_PDB_SUCCESS;
+    /* Determine which procedure is being invoked */
+    if(!strcmp(name, LOAD_PROCEDURE)) {
 
-    /* Check to see if this is the load procedure. */
-    if(!strcmp(name, LOAD_PROCEDURE))
-    {
-        int new_image_id;
+        /* No need to determine whether the plugin is being invoked
+         * interactively here since we don't need a UI for loading */
 
-        /* Check to make sure all parameters were supplied. */
-        if(nparams != 3)
-        {
-            return_values[0].data.d_status = GIMP_PDB_CALLING_ERROR;
-            return;
+        image_ID = read_webp(param[1].data.d_string);
+
+        if(image_ID != -1) {
+
+            /* Return the new image that was loaded */
+            *nreturn_vals = 2;
+            values[1].type         = GIMP_PDB_IMAGE;
+            values[1].data.d_image = image_ID;
+
+        } else {
+            status = GIMP_PDB_EXECUTION_ERROR;
         }
 
-        /* Now read the image. */
-        new_image_id = read_webp(param[1].data.d_string);
+    } else if(!strcmp(name, SAVE_PROCEDURE)) {
 
-        /* Check for an error. */
-        if(new_image_id == -1)
-        {
-            return_values[0].data.d_status = GIMP_PDB_EXECUTION_ERROR;
-            return;
-        }
+        WebPConfig       config = {0};
+        GimpExportReturn export_ret = GIMP_EXPORT_CANCEL;
 
-        /* Fill in the second return value. */
-        *nreturn_vals = 2;
+        /* Load the image and drawable IDs */
+        image_ID    = param[1].data.d_int32;
+        drawable_ID = param[2].data.d_int32;
 
-        return_values[1].type         = GIMP_PDB_IMAGE;
-        return_values[1].data.d_image = new_image_id;
-    }
-    else if(!strcmp(name, SAVE_PROCEDURE))
-    {
-        gint32 image_id, drawable_id;
-        int status = 0;
-        WebPConfig config;
-        GimpExportReturn export_ret;
+        /* Initialize the configuration */
+        WebPConfigInit(&config);
 
-        /* Check to make sure all of the parameters were supplied. */
-        if(nparams != 6)
-        {
-            return_values[0].data.d_status = GIMP_PDB_CALLING_ERROR;
-            return;
-        }
+        /* What happens next depends on the run mode */
+        switch(run_mode) {
+        case GIMP_RUN_INTERACTIVE:
+        case GIMP_RUN_WITH_LAST_VALS:
 
-        /* Grab the image and drawable from the list of parameters. */
-        image_id    = param[1].data.d_int32;
-        drawable_id = param[2].data.d_int32;
+            gimp_ui_init(BINARY_NAME, FALSE);
 
-        /* Try to export the image. */
-        gimp_ui_init(BINARY_NAME, FALSE);
-        export_ret = gimp_export_image(&image_id,
-                                       &drawable_id,
-                                       "WEBP",
-                                       GIMP_EXPORT_CAN_HANDLE_RGB | GIMP_EXPORT_CAN_HANDLE_ALPHA);
+            /* Attempt to export the image */
+            export_ret = gimp_export_image(&image_ID,
+                                           &drawable_ID,
+                                           "WEBP",
+                                           GIMP_EXPORT_CAN_HANDLE_RGB | GIMP_EXPORT_CAN_HANDLE_ALPHA);
 
-        /* If the user can successfully export or chose to ignore warnings, then
-           we can continue with the export process. */
-        switch(export_ret)
-        {
-            case GIMP_EXPORT_EXPORT:
-            case GIMP_EXPORT_IGNORE:
-
-                /* Display the export settings dialog, */
-                if(!export_dialog(&config))
-                {
-                    return_values[0].data.d_status = GIMP_PDB_CANCEL;
-                    return;
-                }
-
-                /* Make an attempt to write the image to disk. */
-                status = write_webp(param[3].data.d_string, drawable_id, &config);
-                gimp_image_delete(image_id);
-
-                break;
-
-            /* The user cancelled the process, so we abort it. */
-            case GIMP_EXPORT_CANCEL:
-                return_values[0].data.d_status = GIMP_PDB_CANCEL;
+            /* Return immediately if canceled */
+            if(export_ret == GIMP_EXPORT_CANCEL) {
+                values[0].data.d_status = GIMP_PDB_CANCEL;
                 return;
+            }
+
+            /* Display the export dialog */
+            if(!export_dialog(&config)) {
+                values[0].data.d_status = GIMP_PDB_CANCEL;
+                return;
+            }
+
+        case GIMP_RUN_NONINTERACTIVE:
+
+            /* Ensure the correct number of parameters were supplied */
+            if(nparams != 6) {
+                status = GIMP_PDB_CALLING_ERROR;
+                break;
+            }
+
+            /* Apply the quality value */
+            config.quality = param[5].data.d_float;
+
+            break;
         }
 
-        if(!status)
-            return_values[0].data.d_status = GIMP_PDB_EXECUTION_ERROR;
+        /* Attempt to save the image */
+        if(!write_webp(param[3].data.d_string, drawable_ID, &config)) {
+            status = GIMP_PDB_EXECUTION_ERROR;
+        }
     }
-    else
-        return_values[0].data.d_status = GIMP_PDB_CALLING_ERROR;
+
+    values[0].data.d_status = status;
 }

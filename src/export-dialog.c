@@ -226,9 +226,6 @@ void on_dialog_response(GtkWidget * dialog,
         }
         else
         {
-            /* TODO: check for error here too. */
-            WebPConfigInit(controls->config);
-
             /* Otherwise, the user has selected the custom preset (which... really isn't
                a preset :P) Fetch the lossless and quality values for the color channel. */
             controls->config->lossless =
