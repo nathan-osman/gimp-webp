@@ -47,22 +47,19 @@ MAIN()
 void query()
 {
     /* Load arguments. */
-    static const GimpParamDef load_arguments[] =
-    {
+    static const GimpParamDef load_arguments[] = {
         { GIMP_PDB_INT32,  "run-mode",     "Interactive, non-interactive" },
         { GIMP_PDB_STRING, "filename",     "The name of the file to load" },
         { GIMP_PDB_STRING, "raw-filename", "The name entered" }
     };
 
     /* Load return values. */
-    static const GimpParamDef load_return_values[] =
-    {
+    static const GimpParamDef load_return_values[] = {
         { GIMP_PDB_IMAGE, "image", "Output image" }
     };
 
     /* Save arguments. */
-    static const GimpParamDef save_arguments[] =
-    {
+    static const GimpParamDef save_arguments[] = {
         { GIMP_PDB_INT32,    "run-mode",     "Interactive, non-interactive" },
         { GIMP_PDB_IMAGE,    "image",        "Input image" },
         { GIMP_PDB_DRAWABLE, "drawable",     "Drawable to save" },
@@ -77,7 +74,7 @@ void query()
                            "Loads images in the WebP file format",
                            "Nathan Osman",
                            "Copyright Nathan Osman",
-                           "2012",
+                           "2015",
                            "WebP image",
                            NULL,
                            GIMP_PLUGIN,
@@ -92,7 +89,7 @@ void query()
                            "Saves files in the WebP image format",
                            "Nathan Osman",
                            "Copyright Nathan Osman",
-                           "2012",
+                           "2015",
                            "WebP image",
                            "RGB*",
                            GIMP_PLUGIN,
