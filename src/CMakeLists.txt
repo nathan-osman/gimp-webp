@@ -18,7 +18,7 @@
 set(SRC
     export-dialog.c
     file-webp.c
-    read-webp.c
+    webp-load.c
     write-webp.c)
 
 # Build the file-webp executable

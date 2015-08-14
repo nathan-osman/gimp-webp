@@ -16,11 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef READ_WEBP_H
-#define READ_WEBP_H
+#ifndef __WEBP_LOAD_H__
+#define __WEBP_LOAD_H__
 
 #include <glib.h>
 
-int read_webp(const gchar *);
+gint32 load_image(const gchar *filename,
+                  GError     **error);
 
-#endif // READ_WEBP_H
+#endif /* __WEBP_LOAD_H__ */

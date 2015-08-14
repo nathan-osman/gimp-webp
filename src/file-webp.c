@@ -21,7 +21,7 @@
 #include <string.h>
 #include <webp/encode.h>
 
-#include "read-webp.h"
+#include "webp-load.h"
 #include "write-webp.h"
 #include "export-dialog.h"
 
@@ -132,10 +132,12 @@ void run(const gchar * name,
     /* Determine which procedure is being invoked */
     if(!strcmp(name, LOAD_PROCEDURE)) {
 
+        GError *error = NULL;
+
         /* No need to determine whether the plugin is being invoked
          * interactively here since we don't need a UI for loading */
 
-        image_ID = read_webp(param[1].data.d_string);
+        image_ID = load_image(param[1].data.d_string, &error);
 
         if(image_ID != -1) {
 
