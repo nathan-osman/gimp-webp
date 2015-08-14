@@ -19,7 +19,7 @@ set(SRC
     export-dialog.c
     file-webp.c
     webp-load.c
-    write-webp.c)
+    webp-save.c)
 
 # Build the file-webp executable
 add_executable(file-webp ${SRC})

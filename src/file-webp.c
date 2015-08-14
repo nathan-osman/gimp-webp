@@ -22,7 +22,7 @@
 #include <webp/encode.h>
 
 #include "webp-load.h"
-#include "write-webp.h"
+#include "webp-save.h"
 #include "export-dialog.h"
 
 const char BINARY_NAME[]    = "file-webp";

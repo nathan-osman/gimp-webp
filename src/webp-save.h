@@ -16,12 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef WRITE_WEBP_H
-#define WRITE_WEBP_H
+#ifndef __WEBP_SAVE_H__
+#define __WEBP_SAVE_H__
 
 #include <glib.h>
-#include <webp/encode.h>
 
-int write_webp(const gchar *, gint, WebPConfig *);
+gboolean save_image(const gchar *filename,
+                    gint32       drawable_ID,
+                    gchar       *preset,
+                    gboolean     lossless,
+                    gfloat       quality,
+                    gfloat       alpha_quality,
+                    GError     **error);
 
-#endif // WRITE_WEBP_H
+#endif /* __WEBP_SAVE_H__ */
