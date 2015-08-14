@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <glib/gstdio.h>
 #include <libgimp/gimp.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <webp/encode.h>
 
@@ -49,10 +50,10 @@ int webp_file_writer(const uint8_t     *data,
 
     /* Obtain the FILE* and write the data to the file */
     outfile = (FILE*)picture->custom_ptr;
-    return fwrite(data, data_size, 1, outfile) == data_size;
+    return fwrite(data, sizeof(uint8_t), data_size, outfile) == data_size;
 }
 
-int webp_file_progress(int percent,
+int webp_file_progress(int                percent,
                        const WebPPicture *picture)
 {
     return gimp_progress_update(percent / 100.0);
@@ -87,9 +88,9 @@ gboolean save_image(const gchar *filename,
     GimpDrawable *drawable;
     GimpImageType drawable_type;
     GimpPixelRgn  region;
+    FILE         *outfile;
     WebPConfig    config;
     WebPPicture   picture;
-    FILE         *outfile;
     int           ok;
 
     /* Obtain the drawable and determine its type */
@@ -105,8 +106,18 @@ gboolean save_image(const gchar *filename,
                         FALSE, FALSE);
 
     /* Begin displaying export progress */
-    gimp_progress_init_printf("Encoding %s",
+    gimp_progress_init_printf("Saving %s",
                               gimp_filename_to_utf8(filename));
+
+    /* Open the output file */
+    if((outfile = g_fopen(filename, "wb")) == NULL) {
+        g_set_error(error,
+                    G_FILE_ERROR,
+                    g_file_error_from_errno(errno),
+                    "Unable to open '%s' for writing",
+                    gimp_filename_to_utf8(filename));
+        return FALSE;
+    }
 
     /* Initialize the WebP configuration with a preset and fill in the
      * remaining values */
@@ -126,16 +137,6 @@ gboolean save_image(const gchar *filename,
     picture.writer        = webp_file_writer;
     picture.custom_ptr    = outfile;
     picture.progress_hook = webp_file_progress;
-
-    /* Open the output file */
-    if((outfile = g_fopen(filename, "wb")) == NULL) {
-        g_set_error(error,
-                    G_FILE_ERROR,
-                    g_file_error_from_errno(errno),
-                    "Unable to open '%s' for writing",
-                    gimp_filename_to_utf8(filename));
-        return FALSE;
-    }
 
     /* Allocate the appropriate buffer for the picture */
     WebPPictureAlloc(&picture);
