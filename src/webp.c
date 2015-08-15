@@ -21,10 +21,10 @@
 #include <string.h>
 #include <webp/encode.h>
 
-#include "file-webp.h"
 #include "webp-dialog.h"
 #include "webp-load.h"
 #include "webp-save.h"
+#include "webp.h"
 
 const char BINARY_NAME[]    = "file-webp";
 const char LOAD_PROCEDURE[] = "file-webp-load";

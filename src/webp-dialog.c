@@ -19,8 +19,8 @@
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
 
-#include "file-webp.h"
 #include "webp-dialog.h"
+#include "webp.h"
 
 struct {
     const gchar *id;

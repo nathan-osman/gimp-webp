@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FILE_WEBP_H
-#define FILE_WEBP_H
+#ifndef __WEBP_H__
+#define __WEBP_H__
 
 extern const char BINARY_NAME[];
 extern const char SAVE_PROCEDURE[];
 
-#endif // FILE_WEBP_H
+#endif /* __WEBP_H__ */

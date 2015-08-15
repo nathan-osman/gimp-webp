@@ -16,10 +16,10 @@
 
 # Specify each of the required source files
 set(SRC
-    file-webp.c
     webp-dialog.c
     webp-load.c
-    webp-save.c)
+    webp-save.c
+    webp.c)
 
 # Build the file-webp executable
 add_executable(file-webp ${SRC})
