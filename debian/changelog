@@ -1,3 +1,9 @@
+gimp-webp (0.3) unstable; urgency=low
+
+  * Export dialog is no longer shown when running non-interactively
+  * Settings dialog has been greatly simplified
+  * Improved verbosity of error messages
+
 gimp-webp (0.2) unstable; urgency=low
 
   * Added support for lossless WebP images

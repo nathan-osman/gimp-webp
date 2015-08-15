@@ -17,6 +17,11 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(gimp-webp)
 
+# Set project version
+set(PROJECT_VERSION_MAJOR 0)
+set(PROJECT_VERSION_MINOR 3)
+set(PROJECT_VERSION_PATCH 0)
+
 # Find the packages that contain the Gimp/WebP headers and libraries
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GIMP REQUIRED
