@@ -4,6 +4,8 @@ gimp-webp (0.3) unstable; urgency=low
   * Settings dialog has been greatly simplified
   * Improved verbosity of error messages
 
+ -- Nathan Osman <nathan@quickmediasolutions.com>  Sat 15 Aug 2015 15:29:42 -0700
+
 gimp-webp (0.2) unstable; urgency=low
 
   * Added support for lossless WebP images
