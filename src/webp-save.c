@@ -85,88 +85,117 @@ gboolean save_image(const gchar *filename,
                     gfloat       alpha_quality,
                     GError     **error)
 {
-    GimpDrawable *drawable;
+    gboolean      status   = FALSE;
+    GimpDrawable *drawable = NULL;
     GimpImageType drawable_type;
+    FILE         *outfile  = NULL;
+    WebPConfig    config   = {0};
+    WebPPicture   picture  = {0};
     GimpPixelRgn  region;
-    FILE         *outfile;
-    WebPConfig    config;
-    WebPPicture   picture;
-    int           ok;
+    guchar       *buffer   = NULL;
 
-    /* Obtain the drawable and determine its type */
-    drawable = gimp_drawable_get(drawable_ID);
-    drawable_type = gimp_drawable_type(drawable_ID);
+    /* The do...while() loop is a neat little trick that makes it easier to
+     * jump to error handling code while still ensuring proper cleanup */
 
-    /* Obtain the pixel region for the drawable */
-    gimp_pixel_rgn_init(&region,
-                        drawable,
-                        0, 0,
-                        drawable->width,
-                        drawable->height,
-                        FALSE, FALSE);
+    do {
 
-    /* Begin displaying export progress */
-    gimp_progress_init_printf("Saving %s",
-                              gimp_filename_to_utf8(filename));
+        /* Obtain the drawable and determine its type */
+        drawable = gimp_drawable_get(drawable_ID);
+        drawable_type = gimp_drawable_type(drawable_ID);
 
-    /* Open the output file */
-    if((outfile = g_fopen(filename, "wb")) == NULL) {
-        g_set_error(error,
-                    G_FILE_ERROR,
-                    g_file_error_from_errno(errno),
-                    "Unable to open '%s' for writing",
-                    gimp_filename_to_utf8(filename));
-        return FALSE;
-    }
+        /* Begin displaying export progress */
+        gimp_progress_init_printf("Saving '%s'",
+                                  gimp_filename_to_utf8(filename));
 
-    /* Initialize the WebP configuration with a preset and fill in the
-     * remaining values */
-    WebPConfigPreset(&config,
-                     webp_preset_by_name(preset),
-                     quality);
+        /* Attempt to open the output file */
+        if((outfile = g_fopen(filename, "wb")) == NULL) {
+            g_set_error(error,
+                        G_FILE_ERROR,
+                        g_file_error_from_errno(errno),
+                        "Unable to open '%s' for writing",
+                        gimp_filename_to_utf8(filename));
+            break;
+        }
 
-    config.lossless      = lossless;
-    config.method        = 6;  /* better quality */
-    config.alpha_quality = alpha_quality;
+        /* Initialize the WebP configuration with a preset and fill in the
+         * remaining values */
+        WebPConfigPreset(&config,
+                         webp_preset_by_name(preset),
+                         quality);
 
-    /* Prepare the WebP structure */
-    WebPPictureInit(&picture);
-    picture.use_argb      = 1;
-    picture.width         = drawable->width;
-    picture.height        = drawable->height;
-    picture.writer        = webp_file_writer;
-    picture.custom_ptr    = outfile;
-    picture.progress_hook = webp_file_progress;
+        config.lossless      = lossless;
+        config.method        = 6;  /* better quality */
+        config.alpha_quality = alpha_quality;
 
-    /* Allocate the appropriate buffer for the picture */
-    WebPPictureAlloc(&picture);
+        /* Prepare the WebP structure */
+        WebPPictureInit(&picture);
+        picture.use_argb      = 1;
+        picture.width         = drawable->width;
+        picture.height        = drawable->height;
+        picture.writer        = webp_file_writer;
+        picture.custom_ptr    = outfile;
+        picture.progress_hook = webp_file_progress;
 
-    /* TODO: error check for buffer */
-
-    /* Read the region into the buffer */
-    gimp_pixel_rgn_get_rect(&region,
-                            (guchar *)picture.argb,
+        /* Obtain the pixel region for the drawable */
+        gimp_pixel_rgn_init(&region,
+                            drawable,
                             0, 0,
                             drawable->width,
-                            drawable->height);
+                            drawable->height,
+                            FALSE, FALSE);
 
-    /* Detach the drawable */
-    gimp_drawable_detach(drawable);
+        /* Attempt to allocate a buffer of the appropriate size */
+        buffer = (guchar *)malloc(drawable->width * drawable->height * drawable->bpp);
+        if(!buffer) {
+            break;
+        }
 
-    /* Perform the encoding and free the memory */
-    ok = WebPEncode(&config, &picture);
-    WebPPictureFree(&picture);
-    fclose(outfile);
+        /* Read the region into the buffer */
+        gimp_pixel_rgn_get_rect(&region,
+                                buffer,
+                                0, 0,
+                                drawable->width,
+                                drawable->height);
 
-    /* Check to see if encoding was successful */
-    if(!ok) {
-        g_set_error(error,
-                    G_FILE_ERROR,
-                    picture.error_code,
-                    "WebP error: '%s'",
-                    webp_error_string(picture.error_code));
-        return FALSE;
+        /* Use the appropriate function to import the data from the buffer */
+        if(drawable_type == GIMP_RGB_IMAGE) {
+            WebPPictureImportRGB(&picture, buffer, drawable->width * drawable->bpp);
+        } else {
+            WebPPictureImportRGBA(&picture, buffer, drawable->width * drawable->bpp);
+        }
+
+        /* Perform the actual encode */
+        if(!WebPEncode(&config, &picture)) {
+            g_set_error(error,
+                        G_FILE_ERROR,
+                        picture.error_code,
+                        "WebP error: '%s'",
+                        webp_error_string(picture.error_code));
+            break;
+        }
+
+        /* The cleanup stuff still needs to run but indicate that everything
+         * completed successfully */
+        status = TRUE;
+
+    } while(0);
+
+    /* Free any resources */
+
+    if(drawable) {
+        gimp_drawable_detach(drawable);
     }
 
-    return TRUE;
+    if(outfile) {
+        fclose(outfile);
+    }
+
+    if(buffer) {
+        free(buffer);
+    }
+
+    WebPPictureFree(&picture);
+
+    /* Return the status */
+    return status;
 }
