@@ -21,9 +21,10 @@
 #include <string.h>
 #include <webp/encode.h>
 
+#include "file-webp.h"
+#include "webp-dialog.h"
 #include "webp-load.h"
 #include "webp-save.h"
-#include "export-dialog.h"
 
 const char BINARY_NAME[]    = "file-webp";
 const char LOAD_PROCEDURE[] = "file-webp-load";
@@ -60,12 +61,15 @@ void query()
 
     /* Save arguments. */
     static const GimpParamDef save_arguments[] = {
-        { GIMP_PDB_INT32,    "run-mode",     "Interactive, non-interactive" },
-        { GIMP_PDB_IMAGE,    "image",        "Input image" },
-        { GIMP_PDB_DRAWABLE, "drawable",     "Drawable to save" },
-        { GIMP_PDB_STRING,   "filename",     "The name of the file to save the image to" },
-        { GIMP_PDB_STRING,   "raw-filename", "The name entered" },
-        { GIMP_PDB_FLOAT,    "quality",      "Quality of the image (0 <= quality <= 100)" }
+        { GIMP_PDB_INT32,    "run-mode",      "Interactive, non-interactive" },
+        { GIMP_PDB_IMAGE,    "image",         "Input image" },
+        { GIMP_PDB_DRAWABLE, "drawable",      "Drawable to save" },
+        { GIMP_PDB_STRING,   "filename",      "The name of the file to save the image to" },
+        { GIMP_PDB_STRING,   "raw-filename",  "The name entered" },
+        { GIMP_PDB_STRING,   "preset",        "Name of preset to use" },
+        { GIMP_PDB_INT32,    "lossless",      "Use lossless encoding (0/1)" },
+        { GIMP_PDB_FLOAT,    "quality",       "Quality of the image (0 <= quality <= 100)" },
+        { GIMP_PDB_FLOAT,    "alpha-quality", "Quality of the image's alpha channel (0 <= alpha-quality <= 100)" }
     };
 
     /* Install the load procedure. */
@@ -114,11 +118,12 @@ void run(const gchar * name,
          gint * nreturn_vals,
          GimpParam ** return_vals)
 {
-    static GimpParam  values[1];
+    static GimpParam  values[2];
     GimpRunMode       run_mode;
     GimpPDBStatusType status = GIMP_PDB_SUCCESS;
     gint32            image_ID;
     gint32            drawable_ID;
+    GError           *error = NULL;
 
     /* Determine the current run mode */
     run_mode = param[0].data.d_int32;
@@ -131,8 +136,6 @@ void run(const gchar * name,
 
     /* Determine which procedure is being invoked */
     if(!strcmp(name, LOAD_PROCEDURE)) {
-
-        GError *error = NULL;
 
         /* No need to determine whether the plugin is being invoked
          * interactively here since we don't need a UI for loading */
@@ -152,15 +155,18 @@ void run(const gchar * name,
 
     } else if(!strcmp(name, SAVE_PROCEDURE)) {
 
-        WebPConfig       config = {0};
+        WebPSaveParams   params;
         GimpExportReturn export_ret = GIMP_EXPORT_CANCEL;
+
+        /* Initialize the parameters to their defaults */
+        params.preset        = "default";
+        params.lossless      = FALSE;
+        params.quality       = 90.0f;
+        params.alpha_quality = 100.0f;
 
         /* Load the image and drawable IDs */
         image_ID    = param[1].data.d_int32;
         drawable_ID = param[2].data.d_int32;
-
-        /* Initialize the configuration */
-        WebPConfigInit(&config);
 
         /* What happens next depends on the run mode */
         switch(run_mode) {
@@ -181,30 +187,45 @@ void run(const gchar * name,
                 return;
             }
 
-            /* Display the export dialog */
-            if(!export_dialog(&config)) {
+            /* Display the dialog */
+            if(save_dialog(&params) != GTK_RESPONSE_OK) {
                 values[0].data.d_status = GIMP_PDB_CANCEL;
                 return;
             }
 
+            break;
+
         case GIMP_RUN_NONINTERACTIVE:
 
             /* Ensure the correct number of parameters were supplied */
-            if(nparams != 6) {
+            if(nparams != 9) {
                 status = GIMP_PDB_CALLING_ERROR;
                 break;
             }
 
-            /* Apply the quality value */
-            config.quality = param[5].data.d_float;
+            /* Load the parameters */
+            params.preset        = param[5].data.d_string;
+            params.lossless      = param[6].data.d_int32;
+            params.quality       = param[7].data.d_float;
+            params.alpha_quality = param[8].data.d_float;
 
             break;
         }
 
         /* Attempt to save the image */
-        if(!write_webp(param[3].data.d_string, drawable_ID, &config)) {
+        if(!save_image(param[3].data.d_string,
+                       drawable_ID,
+                       &params,
+                       &error)) {
             status = GIMP_PDB_EXECUTION_ERROR;
         }
+    }
+
+    /* If an error was supplied, include it in the return values */
+    if(status != GIMP_PDB_SUCCESS && error) {
+        *nreturn_vals = 2;
+        values[1].type          = GIMP_PDB_STRING;
+        values[1].data.d_string = error->message;
     }
 
     values[0].data.d_status = status;

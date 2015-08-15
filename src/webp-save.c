@@ -77,13 +77,10 @@ const gchar *webp_error_string(WebPEncodingError error_code)
     }
 }
 
-gboolean save_image(const gchar *filename,
-                    gint32       drawable_ID,
-                    gchar       *preset,
-                    gboolean     lossless,
-                    gfloat       quality,
-                    gfloat       alpha_quality,
-                    GError     **error)
+gboolean save_image(const gchar    *filename,
+                    gint32          drawable_ID,
+                    WebPSaveParams *params,
+                    GError        **error)
 {
     gboolean      status   = FALSE;
     GimpDrawable *drawable = NULL;
@@ -120,12 +117,12 @@ gboolean save_image(const gchar *filename,
         /* Initialize the WebP configuration with a preset and fill in the
          * remaining values */
         WebPConfigPreset(&config,
-                         webp_preset_by_name(preset),
-                         quality);
+                         webp_preset_by_name(params->preset),
+                         params->quality);
 
-        config.lossless      = lossless;
+        config.lossless      = params->lossless;
         config.method        = 6;  /* better quality */
-        config.alpha_quality = alpha_quality;
+        config.alpha_quality = params->alpha_quality;
 
         /* Prepare the WebP structure */
         WebPPictureInit(&picture);

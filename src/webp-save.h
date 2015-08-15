@@ -21,12 +21,16 @@
 
 #include <glib.h>
 
-gboolean save_image(const gchar *filename,
-                    gint32       drawable_ID,
-                    gchar       *preset,
-                    gboolean     lossless,
-                    gfloat       quality,
-                    gfloat       alpha_quality,
-                    GError     **error);
+typedef struct {
+    gchar   *preset;
+    gboolean lossless;
+    gfloat   quality;
+    gfloat   alpha_quality;
+} WebPSaveParams;
+
+gboolean save_image(const gchar    *filename,
+                    gint32          drawable_ID,
+                    WebPSaveParams *params,
+                    GError        **error);
 
 #endif /* __WEBP_SAVE_H__ */
