@@ -16,15 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EXPORT_DIALOG_H
-#define EXPORT_DIALOG_H
+#ifndef __WEBP_DIALOG_H__
+#define __WEBP_DIALOG_H__
 
-#include <webp/encode.h>
+#include <gtk/gtk.h>
 
-/* Displays the export dialog and returns 1 if the user
-   accepted the export and 0 if the user cancelled the
-   process. The chosen parameters are entered into the
-   specified config. */
-int export_dialog(WebPConfig *);
+#include "webp-save.h"
 
-#endif // EXPORT_DIALOG_H
+GtkResponseType save_dialog(WebPSaveParams *params);
+
+#endif /* __WEBP_DIALOG_H__ */

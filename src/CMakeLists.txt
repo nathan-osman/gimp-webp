@@ -16,8 +16,8 @@
 
 # Specify each of the required source files
 set(SRC
-    export-dialog.c
     file-webp.c
+    webp-dialog.c
     webp-load.c
     webp-save.c)
 
