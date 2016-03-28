@@ -93,7 +93,7 @@ gint32 load_image(const gchar *filename,
     free(outdata);
 
     /* Add the layer to the image and set the filename */
-    gimp_image_add_layer(image_ID, layer_ID, 0);
+    gimp_image_insert_layer(image_ID, layer_ID, -1, 0);
     gimp_image_set_filename(image_ID, filename);
 
     return image_ID;
