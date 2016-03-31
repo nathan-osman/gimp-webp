@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Prepare the configuration file
+configure_file(config.h.in "${CMAKE_CURRENT_BINARY_DIR}/config.h")
+
 # Specify each of the required source files
 set(SRC
     webp-dialog.c

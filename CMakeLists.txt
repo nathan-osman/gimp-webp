@@ -29,9 +29,17 @@ pkg_check_modules(GIMP REQUIRED
     gimpui-2.0>=2.8
     libwebp>=0.4)
 
+# Check for animation support (version 0.5+) and enable an option if possible
+if(NOT (${GIMP_libwebp_VERSION} VERSION_LESS 0.5))
+    option(ENABLE_ANIMATION "Enable support for animations" ON)
+endif()
+
 # Add the include and library directories to the project
 include_directories(${GIMP_INCLUDE_DIRS})
 link_directories(${GIMP_LIBRARY_DIRS})
+
+# Ensure that files in ${CMAKE_CURRENT_BINARY_DIR} are available
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Include the source directory
 add_subdirectory(src)
