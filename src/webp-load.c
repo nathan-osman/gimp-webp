@@ -17,6 +17,7 @@
  */
 
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <libgimp/gimp.h>
 #include <stdio.h>
 #include <stdlib.h>
