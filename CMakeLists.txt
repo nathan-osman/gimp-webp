@@ -27,7 +27,8 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GIMP REQUIRED
     gimp-2.0>=2.8
     gimpui-2.0>=2.8
-    libwebp>=0.4)
+    libwebp>=0.4
+    libwebpmux)
 
 # Check for animation support (version 0.5+) and enable an option if possible
 if(NOT (${GIMP_libwebp_VERSION} VERSION_LESS 0.5))

@@ -20,50 +20,36 @@
 #include <glib/gstdio.h>
 #include <libgimp/gimp.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <webp/decode.h>
+#include <webp/mux.h>
 
 #include "webp-load.h"
 
-gint32 load_image(const gchar *filename,
-                  GError      **error)
+gint32 load_layer(gint32            image_id,
+                  WebPMuxFrameInfo *info,
+                  int               layer)
 {
-    gchar        *indata;
-    gsize         indatalen;
     uint8_t      *outdata;
     int           width;
     int           height;
-    gint32        image_ID;
-    gint32        layer_ID;
+    char          layer_name[40];
+    int           layer_id;
     GimpDrawable *drawable;
     GimpPixelRgn  region;
 
-    /* Attempt to read the file contents from disk */
-    if(g_file_get_contents(filename,
-                           &indata,
-                           &indatalen,
-                           error) == FALSE) {
+    /* Decode the image */
+    outdata = WebPDecodeRGBA(info->bitstream.bytes,
+                             info->bitstream.size,
+                             &width,
+                             &height);
+    if (!outdata) {
         return -1;
     }
 
-    /* TODO: decode the image in "chunks" or "tiles" */
-    /* TODO: check if an alpha channel is present */
-
-    /* Attempt to decode the data as a WebP image */
-    outdata = WebPDecodeRGBA(indata, indatalen, &width, &height);
-
-    /* Free the original compressed data */
-    g_free(indata);
-
-    /* Check to ensure the image data was loaded correctly */
-    if(outdata == NULL) {
-        return -1;
-    }
-
-    /* Create the new image and associated layer */
-    image_ID = gimp_image_new(width, height, GIMP_RGB);
-    layer_ID = gimp_layer_new(image_ID,
-                              "Background",
+    /* Create the layer */
+    snprintf(layer_name, 40, "Layer %d", layer);
+    layer_id = gimp_layer_new(image_id,
+                              layer_name,
                               width,
                               height,
                               GIMP_RGBA_IMAGE,
@@ -71,7 +57,7 @@ gint32 load_image(const gchar *filename,
                               GIMP_NORMAL_MODE);
 
     /* Retrieve the drawable for the layer */
-    drawable = gimp_drawable_get(layer_ID);
+    drawable = gimp_drawable_get(layer_id);
 
     /* Get a pixel region from the layer */
     gimp_pixel_rgn_init(&region,
@@ -93,9 +79,102 @@ gint32 load_image(const gchar *filename,
     /* Free the image data */
     free(outdata);
 
-    /* Add the layer to the image and set the filename */
-    gimp_image_insert_layer(image_ID, layer_ID, -1, 0);
-    gimp_image_set_filename(image_ID, filename);
+    return layer_id;
+}
 
-    return image_ID;
+gint32 load_image(const gchar *filename,
+                  GError     **error)
+{
+    gint32       ret       = -1;
+    gchar       *indata    = 0;
+    gsize        indatalen;
+    WebPData     bitstream;
+    WebPMux     *mux       = 0;
+    WebPMuxError err;
+    int          width;
+    int          height;
+    uint32_t     flag;
+    int          nFrames;
+    gint32       image_id;
+    int          i;
+
+    /* Attempt to read the file contents from disk */
+    if (g_file_get_contents(filename,
+                            &indata,
+                            &indatalen,
+                            error) == FALSE) {
+        goto error;
+    }
+    bitstream.bytes = (const uint8_t *)indata;
+    bitstream.size = indatalen;
+
+    /* Create the mux object from the bitstream  */
+    mux = WebPMuxCreate(&bitstream, 0);
+    if (!mux) {
+        goto error;
+    }
+
+    /* Retrieve image dimensions */
+    err = WebPMuxGetCanvasSize(mux, &width, &height);
+    if (err != WEBP_MUX_OK) {
+        goto error;
+    }
+
+    /* Find out if the image includes transparency (RGB vs. RGBA) */
+    err = WebPMuxGetFeatures(mux, &flag);
+    if (err != WEBP_MUX_OK) {
+        goto error;
+    }
+
+    /* Determine how many frames are in the image - if this image doesn't
+       contain an animation, this value is set to 0 - however, the first
+       "frame" can still be retrieved, so set the number to 1 */
+    err = WebPMuxNumChunks(mux, WEBP_CHUNK_ANMF, &nFrames);
+    if (err != WEBP_MUX_OK) {
+        goto error;
+    }
+    nFrames = nFrames ? nFrames : 1;
+
+    /* Create a new image with the dimensions */
+    image_id = gimp_image_new(width, height, GIMP_RGB);
+    gimp_image_set_filename(image_id, filename);
+
+    /* Loop over each of the frames */
+    for (i = 0; i < nFrames; ++i) {
+
+        gint32           layer_id;
+        WebPMuxFrameInfo info;
+
+        /* Load the frame */
+        err = WebPMuxGetFrame(mux, i, &info);
+        if (err != WEBP_MUX_OK) {
+            goto error;
+        }
+
+        /* Attempt to load the layer and immediately free the data */
+        layer_id = load_layer(image_id, &info, i);
+        WebPDataClear(&info.bitstream);
+
+        /* Ensure there were no errors loading the layer */
+        if (layer_id == -1) {
+            goto error;
+        }
+
+        gimp_image_insert_layer(image_id, layer_id, -1, 0);
+    }
+
+    /* Assign the image to the return value */
+    ret = image_id;
+
+error:
+
+    if (mux) {
+        WebPMuxDelete(mux);
+    }
+
+    if (indata) {
+        g_free(indata);
+    }
+
+    return ret;
 }
