@@ -1,3 +1,11 @@
+gimp-webp (0.5) unstable; urgency=low
+
+  * Added support for importing exporting animation files.
+  * Added animation options when multiple layers present.
+  * Changed backend code to use gegl.
+
+ -- Ben Touchette <draekko.software+gimp@gmail.com>  Wed, 28 Jul 2017 01:55:00 0000
+
 gimp-webp (0.3) unstable; urgency=low
 
   * Export dialog is no longer shown when running non-interactively
