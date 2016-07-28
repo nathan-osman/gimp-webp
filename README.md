@@ -8,11 +8,11 @@ The plugin is designed to run on all platforms currently supported by the Gimp.
 
 ### Building
 
-In order to build this plugin, you will need the following tools and libraries installed:
+In order to build this plugin, you will need the following app, tools, and libraries installed:
 
- - [CMake 2.8.12+](http://www.cmake.org/)
- - Gimp 2.8+ development files (`libgimp2.0-dev` on Ubuntu)
- - Webp 0.4+ development files (`libwebp-dev` on Ubuntu)
+ - CMake 2.8.12+
+ - Gimp 2.9+ development files 
+ - Webp 0.5+ development files 
 
 The build process consists of:
 
@@ -27,4 +27,4 @@ On most *nix platforms, installation is as simple as:
 
     sudo make install
 
-If you don't have root privileges, you can copy the `src/file-webp` binary to `~/.gimp-2.8/plug-ins/`.
+If you don't have root privileges, you can copy the `src/file-webp` binary to `~/.config/GIMP/2.9/plug-ins/`.
