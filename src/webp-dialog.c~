@@ -193,7 +193,7 @@ GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLay
       slider2 = 5;
 
       /* Create the animation checkbox */
-      animation_checkbox = gtk_check_button_new_with_label("Use animation");
+      animation_checkbox = gtk_check_button_new_with_label("Animation");
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_checkbox), params->animation);
       gtk_table_attach(GTK_TABLE(table),
                        animation_checkbox,

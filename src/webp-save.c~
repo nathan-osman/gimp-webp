@@ -375,6 +375,7 @@ gboolean save_all_layers(const gchar    *filename,
 #endif
         anim_params.loop_count = 0;
         if (params->loop == FALSE) {
+          g_print("don't loop infinitely\n");
           anim_params.loop_count = 1;
         }
 

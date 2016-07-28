@@ -234,7 +234,7 @@ void run(const gchar * name,
             status = GIMP_PDB_EXECUTION_ERROR;
         }
 
-        g_free(allLayers);
+        gfree(allLayers);
     }
 
     /* If an error was supplied, include it in the return values */

@@ -237,7 +237,7 @@ gint32 load_image(const gchar *filename,
     WebPDataClear(&wp_data);
   }
 
-  if (icc == TRUE) {
+  if (flag & ICCP_FLAG) {
     WebPData icc_profile;
     WebPMuxGetChunk(mux, "ICCP", &icc_profile);
     g_print("Size of the ICC profile data: %d\n", (int)icc_profile.size);

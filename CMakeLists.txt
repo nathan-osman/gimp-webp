@@ -27,7 +27,9 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GIMP REQUIRED
     gimp-2.0>=2.8
     gimpui-2.0>=2.8
-    libwebp>=0.4)
+    libwebp>=0.5
+    libwebpmux>=0.5
+    libwebpdemux>=0.5)
 
 # Add the include and library directories to the project
 include_directories(${GIMP_INCLUDE_DIRS})
