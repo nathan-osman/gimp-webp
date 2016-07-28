@@ -1,6 +1,6 @@
 /**
  * gimp-webp - WebP Plugin for the GIMP
- * Copyright (C) 2015  Nathan Osman
+ * Copyright (C) 2016  Nathan Osman & Ben Touchette
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -78,9 +78,9 @@ void query()
     gimp_install_procedure(LOAD_PROCEDURE,
                            "Loads images in the WebP file format",
                            "Loads images in the WebP file format",
-                           "Nathan Osman; Ben Touchette",
-                           "Copyright 2015 Nathan Osman; Copyright 2016 Ben Touchette",
-                           "2015;2016",
+                           "Nathan Osman & Ben Touchette",
+                           "Copyright (C) 2016  Nathan Osman & Ben Touchette",
+                           "2016",
                            "WebP image",
                            NULL,
                            GIMP_PLUGIN,
@@ -93,9 +93,9 @@ void query()
     gimp_install_procedure(SAVE_PROCEDURE,
                            "Saves files in the WebP image format",
                            "Saves files in the WebP image format",
-                           "Nathan Osman; Ben Touchette",
-                           "Copyright 2015 Nathan Osman; Copyright 2016 Ben Touchette",
-                           "2015;2016",
+                           "Nathan Osman & Ben Touchette",
+                           "Copyright (C) 2016  Nathan Osman & Ben Touchette",
+                           "2016",
                            "WebP image",
                            "RGB*",
                            GIMP_PLUGIN,
