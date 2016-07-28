@@ -80,7 +80,22 @@ void save_dialog_toggle_scale(GtkWidget *widget,
                                    !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)));
 }
 
-GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLayers)
+#ifdef WEBP_0_5
+void save_dialog_toggle_checkbox(GtkWidget *widget,
+                                 gpointer   data)
+{
+    gtk_widget_set_sensitive(GTK_OBJECT(data),
+                             !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)));
+}
+#endif
+
+GtkResponseType save_dialog(
+        WebPSaveParams *params
+#ifdef WEBP_0_5
+      , gint32 image_ID
+      , gint32 nLayers
+#endif
+)
 {
     GtkWidget       *dialog;
     GtkWidget       *vbox;
@@ -89,21 +104,20 @@ GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLay
     GtkWidget       *preset_label;
     GtkListStore    *preset_list;
     GtkWidget       *preset_combo;
-    GtkWidget       *lossless_checkbox;
-    GtkWidget       *animation_checkbox;
-    GtkWidget       *loop_anim_checkbox;
     GtkObject       *quality_scale;
     GtkObject       *alpha_quality_scale;
-    GtkResponseType  response;
+    GtkWidget       *lossless_checkbox;
+#ifdef WEBP_0_5
+    GtkWidget       *animation_checkbox;
+    GtkWidget       *loop_anim_checkbox;
     gboolean         animation_supported = FALSE;
+#endif
+    GtkResponseType  response;
 
-    g_print("Layers #%d\n", nLayers);
+#ifdef WEBP_0_5
+    /* Determine if the image contains more than one layer */
     animation_supported = nLayers > 1;
-    if (animation_supported) {
-      g_print("Layers Supported\n");
-    } else {
-      g_print("Layers Not Supported\n");
-    }
+#endif
 
     /* Create the dialog */
     dialog = gimp_export_dialog_new("WebP",
@@ -137,7 +151,15 @@ GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLay
     gtk_widget_show(label);
 
     /* Create the table */
-    table = gtk_table_new(4, 5, FALSE);
+    table = gtk_table_new(
+#ifdef WEBP_0_5
+                animation_supported == TRUE ? 6 : 4
+#else
+                4
+#endif
+              , 3
+              , FALSE
+    );
     gtk_table_set_row_spacings(GTK_TABLE(table), 6);
     gtk_table_set_col_spacings(GTK_TABLE(table), 6);
     gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
@@ -171,61 +193,9 @@ GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLay
                      G_CALLBACK(save_dialog_set_preset),
                      &params->preset);
 
-    /* Create the lossless checkbox */
-    lossless_checkbox = gtk_check_button_new_with_label("Lossless");
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(lossless_checkbox), params->lossless);
-    gtk_table_attach(GTK_TABLE(table),
-                     lossless_checkbox,
-                     1, 3,
-                     1, 2,
-                     GTK_FILL, GTK_FILL,
-                     0, 0);
-    gtk_widget_show(lossless_checkbox);
-
-    g_signal_connect(lossless_checkbox, "toggled",
-                     G_CALLBACK(gimp_toggle_button_update),
-                     &params->lossless);
-
-    int slider1 = 2;
-    int slider2 = 3;
-    if (animation_supported == TRUE) {
-      slider1 = 4;
-      slider2 = 5;
-
-      /* Create the animation checkbox */
-      animation_checkbox = gtk_check_button_new_with_label("Use animation");
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_checkbox), params->animation);
-      gtk_table_attach(GTK_TABLE(table),
-                       animation_checkbox,
-                       1, 3,
-                       2, 3,
-                       GTK_FILL, GTK_FILL,
-                       0, 0);
-      gtk_widget_show(animation_checkbox);
-
-      g_signal_connect(animation_checkbox, "toggled",
-                       G_CALLBACK(gimp_toggle_button_update),
-                       &params->animation);
-
-      /* Create the loop animation checkbox */
-      loop_anim_checkbox = gtk_check_button_new_with_label("Loop infinitely");
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(loop_anim_checkbox), params->loop);
-      gtk_table_attach(GTK_TABLE(table),
-                       loop_anim_checkbox,
-                       1, 3,
-                       3, 4,
-                       GTK_FILL, GTK_FILL,
-                       0, 0);
-      gtk_widget_show(loop_anim_checkbox);
-
-      g_signal_connect(loop_anim_checkbox, "toggled",
-                       G_CALLBACK(gimp_toggle_button_update),
-                       &params->loop);
-    }
-
     /* Create the slider for image quality */
     quality_scale = gimp_scale_entry_new(GTK_TABLE(table),
-                                         0, slider1,
+                                         0, 1,
                                          "Image quality:",
                                          125,
                                          0,
@@ -243,7 +213,7 @@ GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLay
 
     /* Create the slider for alpha channel quality */
     alpha_quality_scale = gimp_scale_entry_new(GTK_TABLE(table),
-                                               0, slider2,
+                                               0, 2,
                                                "Alpha quality:",
                                                125,
                                                0,
@@ -259,6 +229,21 @@ GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLay
                      G_CALLBACK(gimp_float_adjustment_update),
                      &params->alpha_quality);
 
+    /* Create the lossless checkbox */
+    lossless_checkbox = gtk_check_button_new_with_label("Lossless");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(lossless_checkbox), params->lossless);
+    gtk_table_attach(GTK_TABLE(table),
+                     lossless_checkbox,
+                     1, 3,
+                     3, 4,
+                     GTK_FILL, GTK_FILL,
+                     0, 0);
+    gtk_widget_show(lossless_checkbox);
+
+    g_signal_connect(lossless_checkbox, "toggled",
+                     G_CALLBACK(gimp_toggle_button_update),
+                     &params->lossless);
+
     /* Enable and disable the sliders when the lossless option is selected */
     g_signal_connect(lossless_checkbox, "toggled",
                      G_CALLBACK(save_dialog_toggle_scale),
@@ -266,6 +251,46 @@ GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLay
     g_signal_connect(lossless_checkbox, "toggled",
                      G_CALLBACK(save_dialog_toggle_scale),
                      alpha_quality_scale);
+
+#ifdef WEBP_0_5
+    if (animation_supported == TRUE) {
+
+        /* Create the animation checkbox */
+        animation_checkbox = gtk_check_button_new_with_label("Use animation");
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_checkbox), params->animation);
+        gtk_table_attach(GTK_TABLE(table),
+                         animation_checkbox,
+                         1, 3,
+                         4, 5,
+                         GTK_FILL, GTK_FILL,
+                         0, 0);
+        gtk_widget_show(animation_checkbox);
+
+        g_signal_connect(animation_checkbox, "toggled",
+                         G_CALLBACK(gimp_toggle_button_update),
+                         &params->animation);
+
+        /* Create the loop animation checkbox */
+        loop_anim_checkbox = gtk_check_button_new_with_label("Loop infinitely");
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(loop_anim_checkbox), params->loop);
+        gtk_table_attach(GTK_TABLE(table),
+                         loop_anim_checkbox,
+                         1, 3,
+                         5, 6,
+                         GTK_FILL, GTK_FILL,
+                         0, 0);
+        gtk_widget_show(loop_anim_checkbox);
+
+        g_signal_connect(loop_anim_checkbox, "toggled",
+                         G_CALLBACK(gimp_toggle_button_update),
+                         &params->loop);
+
+        /* Enable and disable the loop checkbox when the animation checkbox is selected */
+        g_signal_connect(animation_checkbox, "toggled",
+                         G_CALLBACK(save_dialog_toggle_checkbox),
+                         loop_anim_checkbox);
+    }
+#endif
 
     /* Display the dialog and enter the main event loop */
     gtk_widget_show(dialog);

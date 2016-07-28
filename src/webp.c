@@ -21,6 +21,7 @@
 #include <string.h>
 #include <webp/encode.h>
 
+#include "config.h"
 #include "webp-dialog.h"
 #include "webp-load.h"
 #include "webp-save.h"
@@ -71,7 +72,7 @@ void query()
         { GIMP_PDB_FLOAT,    "quality",       "Quality of the image (0 <= quality <= 100)" },
         { GIMP_PDB_FLOAT,    "alpha-quality", "Quality of the image's alpha channel (0 <= alpha-quality <= 100)" },
         { GIMP_PDB_INT32,    "animation",     "Use layers for animation (0/1)" },
-        { GIMP_PDB_INT32,    "anim-loop",     "Loop animation infinitely (0/1)" }
+        { GIMP_PDB_INT32,    "anim-loop",     "Loop animation infinitely (0/1)" },
     };
 
     /* Install the load procedure. */
@@ -126,8 +127,10 @@ void run(const gchar * name,
     gint32            image_ID;
     gint32            drawable_ID;
     GError           *error = NULL;
+#ifdef WEBP_0_5
     gint32            nLayers;
-    gint32            *allLayers;
+    gint32           *allLayers;
+#endif
 
     /* Determine the current run mode */
     run_mode = param[0].data.d_int32;
@@ -165,17 +168,21 @@ void run(const gchar * name,
         /* Initialize the parameters to their defaults */
         params.preset        = "default";
         params.lossless      = FALSE;
-        params.animation     = FALSE;
-        params.loop          = TRUE;
         params.quality       = 90.0f;
         params.alpha_quality = 100.0f;
+#ifdef WEBP_0_5
+        params.animation     = FALSE;
+        params.loop          = TRUE;
+#endif
 
         /* Load the image and drawable IDs */
         image_ID    = param[1].data.d_int32;
         drawable_ID = param[2].data.d_int32;
 
-        allLayers = gimp_image_get_layers (image_ID, &nLayers);
-        //g_free (gimp_image_get_layers (image_ID, &nLayers));
+#ifdef WEBP_0_5
+        /* Load the image layers */
+        allLayers = gimp_image_get_layers(image_ID, &nLayers);
+#endif
 
         /* What happens next depends on the run mode */
         switch(run_mode) {
@@ -197,7 +204,13 @@ void run(const gchar * name,
             }
 
             /* Display the dialog */
-            if(save_dialog(&params, image_ID, nLayers) != GTK_RESPONSE_OK) {
+            if(save_dialog(
+                        &params
+#ifdef WEBP_0_5
+                      , image_ID
+                      , nLayers
+#endif
+                        ) != GTK_RESPONSE_OK) {
                 values[0].data.d_status = GIMP_PDB_CANCEL;
                 return;
             }
@@ -206,8 +219,10 @@ void run(const gchar * name,
 
         case GIMP_RUN_NONINTERACTIVE:
 
-            /* Ensure the correct number of parameters were supplied */
-            if(nparams != 10) {
+            /* Ensure the correct number of parameters were supplied
+                Note: even if animation support is not available, 11
+                parameters must still be supplied */
+            if(nparams != 11) {
                 status = GIMP_PDB_CALLING_ERROR;
                 break;
             }
@@ -217,24 +232,32 @@ void run(const gchar * name,
             params.lossless      = param[6].data.d_int32;
             params.quality       = param[7].data.d_float;
             params.alpha_quality = param[8].data.d_float;
+#ifdef WEBP_0_5
             params.animation     = param[9].data.d_int32;
             params.loop          = param[10].data.d_int32;
+#endif
 
             break;
         }
 
         /* Attempt to save the image */
-        if(!save_image(param[3].data.d_string,
-                       nLayers,
-                       allLayers,
-                       image_ID,
-                       drawable_ID,
-                       &params,
-                       &error)) {
+        if(!save_image(
+                    param[3].data.d_string
+#ifdef WEBP_0_5
+                  , nLayers
+                  , allLayers
+                  , image_ID
+#endif
+                  , drawable_ID
+                  , &params
+                  , &error
+                    )) {
             status = GIMP_PDB_EXECUTION_ERROR;
         }
 
+#ifdef WEBP_0_5
         g_free(allLayers);
+#endif
     }
 
     /* If an error was supplied, include it in the return values */

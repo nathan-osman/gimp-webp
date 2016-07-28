@@ -24,10 +24,10 @@
 typedef struct {
     gchar   *preset;
     gboolean lossless;
-    gboolean animation;
-    gboolean loop;
     gfloat   quality;
     gfloat   alpha_quality;
+    gboolean animation;
+    gboolean loop;
 } WebPSaveParams;
 
 gboolean save_image(const gchar    *filename,
