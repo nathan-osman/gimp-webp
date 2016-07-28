@@ -32,16 +32,29 @@ pkg_check_modules(GIMP REQUIRED
     gimpui-2.0>=2.8
 )
 
-if(NOT GIMP_2_9)
-    message(STATUS "Gimp ${GIMP_gimp-2.0_VERSION} found")
-    if("${GIMP_gimp-2.0_VERSION}" VERSION_LESS "2.9")
-        set(GIMP_2_9 0)
-    else()
-        set(GIMP_2_9 1)
-    endif()
+message(STATUS "Gimp ${GIMP_gimp-2.0_VERSION} found")
+
+include_directories(${GIMP_INCLUDE_DIRS})
+link_directories(${GIMP_LIBRARY_DIRS})
+
+if("${GIMP_gimp-2.0_VERSION}" VERSION_LESS "2.9")
+    set(GIMP_2_9 0)
+else()
+    set(GIMP_2_9 1)
+
+    # GEGL is required
+    pkg_check_modules(GEGL REQUIRED
+        gegl-0.3>=0.3.8
+    )
+
+    message(STATUS "GEGL ${GEGL_gegl-0.3_VERSION} found")
+
+    include_directories(${GEGL_INCLUDE_DIRS})
+    link_directories(${GEGL_LIBRARY_DIRS})
 endif()
 
-# Do the same for libwebp - 0.5 is required for animation support.
+# Do the same for libwebp - 0.5 is required for animation support. (TODO:
+# verify if this is indeed the case.)
 
 pkg_check_modules(WEBP REQUIRED
     libwebp>=0.4
@@ -49,18 +62,16 @@ pkg_check_modules(WEBP REQUIRED
     libwebpdemux>=0.4
 )
 
-if(NOT WEBP_0_5)
-    message(STATUS "WebP ${WEBP_libwebp_VERSION} found")
-    if("${WEBP_libwebp_VERSION}" VERSION_LESS "0.5")
-        set(WEBP_0_5 0)
-    else()
-        set(WEBP_0_5 1)
-    endif()
-endif()
+message(STATUS "WebP ${WEBP_libwebp_VERSION} found")
 
-# Add the include and library directories to the project
-include_directories(${GIMP_INCLUDE_DIRS} ${WEBP_INCLUDE_DIRS})
-link_directories(${GIMP_LIBRARY_DIRS} ${WEBP_LIBRARY_DIRS})
+include_directories(${WEBP_INCLUDE_DIRS})
+link_directories(${WEBP_LIBRARY_DIRS})
+
+if("${WEBP_libwebp_VERSION}" VERSION_LESS "0.5")
+    set(WEBP_0_5 0)
+else()
+    set(WEBP_0_5 1)
+endif()
 
 # Ensure that files in ${CMAKE_CURRENT_BINARY_DIR} are available
 set(CMAKE_INCLUDE_CURRENT_DIR ON)

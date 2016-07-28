@@ -20,255 +20,221 @@
 #include <glib/gstdio.h>
 #include <libgimp/gimp.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <glib/gprintf.h>
-#include <gegl.h>
 #include <webp/decode.h>
-#include <webp/demux.h>
 #include <webp/mux.h>
+
+#include "config.h"
 #include "webp-load.h"
 
-void create_layer(gint32 image_ID, uint8_t *layer_data, gint32 position,
-                  gchar *name, gint width, gint height, gint32 offsetx,
-                  gint32 offsety, gboolean has_alpha) {
-	gint32          layer_ID;
-	GeglBuffer     *geglbuffer;
-	GeglRectangle   extent;
-	GeglColor       color;
-	guchar         *buff;
-	gint32          alpha;
+#ifdef GIMP_2_9
+#  include <gegl.h>
+#endif
 
-	layer_ID = gimp_layer_new(image_ID, name,
-	                          width, height,
+/* Create a layer with the provided image data and add it to the image */
+void create_layer(gint32   image_ID,
+                  uint8_t *layer_data,
+                  gint32   position,
+                  gchar   *name,
+                  gint     width,
+                  gint     height,
+                  gint32   offsetx,
+                  gint32   offsety)
+{
+    gint32        layer_ID;
+#ifdef GIMP_2_9
+    GeglBuffer   *geglbuffer;
+    GeglRectangle extent;
+#else
+    GimpDrawable *drawable;
+    GimpPixelRgn  region;
+#endif
+
+    layer_ID = gimp_layer_new(image_ID,
+                              name,
+                              width, height,
 	                          GIMP_RGBA_IMAGE,
 	                          100,
-	                          GIMP_NORMAL_MODE);
+                              GIMP_NORMAL_MODE);
 
-	gimp_image_insert_layer(image_ID, layer_ID, -1, position);
-
-	if (offsetx > 0 || offsety > 0) {
-		gimp_layer_set_offsets(layer_ID, offsetx, offsety);
-	}
-
+#ifdef GIMP_2_9
 	/* Retrieve the buffer for the layer */
 	geglbuffer = gimp_drawable_get_buffer(layer_ID);
 
 	/* Copy the image data to the region */
-	gegl_rectangle_set (&extent, 0, 0, width, height);
-	gegl_buffer_set (geglbuffer, &extent, 0, NULL, layer_data, GEGL_AUTO_ROWSTRIDE);
+    gegl_rectangle_set(&extent, 0, 0, width, height);
+    gegl_buffer_set(geglbuffer, &extent, 0, NULL, layer_data, GEGL_AUTO_ROWSTRIDE);
 
 	/* Flush the drawable and detach */
-	gegl_buffer_flush (geglbuffer);
+    gegl_buffer_flush(geglbuffer);
 
 	g_object_unref(geglbuffer);
+#else
+    /* Retrieve the drawable for the layer */
+    drawable = gimp_drawable_get(layer_ID);
+
+    /* Get a pixel region from the layer */
+    gimp_pixel_rgn_init(&region,
+                        drawable,
+                        0, 0,
+                        width, height,
+                        FALSE, FALSE);
+
+    /* Copy the image data to the region */
+    gimp_pixel_rgn_set_rect(&region,
+                            layer_data,
+                            0, 0,
+                            width, height);
+
+    /* Flush the drawable and detach */
+    gimp_drawable_flush(drawable);
+    gimp_drawable_detach(drawable);
+#endif
+
+    /* Add the new layer to the image */
+    gimp_image_insert_layer(image_ID, layer_ID, -1, position);
+
+    /* If layer offsets were provided, use them to position the image */
+    if (offsetx || offsety) {
+        gimp_layer_set_offsets(layer_ID, offsetx, offsety);
+    }
 }
 
 gint32 load_image(const gchar *filename,
-                  GError      **error) {
-	gchar                *indata;
-	gsize                 indatalen;
-	uint8_t              *outdata;
-	gint                  width;
-	gint                  height;
-	gint32                image_ID;
-	gint32                layer_ID;
-	gint                  has_alpha;
-	WebPData              bitstream;
-	WebPMux              *mux;
-	WebPBitstreamFeatures features;
-	WebPDecoderConfig     config;
-	uint32_t              flag;
-	int                   animation = FALSE;
-	int                   icc = FALSE;
-	int                   exif = FALSE;
-	int                   xmp = FALSE;
-	int                   alpha = FALSE;
-	int                   frames = 0;
-	GimpRGB               bgcolor;
-	guchar                red, green, blue;
-
-	/* Attempt to read the file contents from disk */
-	if(g_file_get_contents(filename,
-	                       &indata,
-	                       &indatalen,
-	                       error) == FALSE) {
-		return -1;
-	}
-
-	g_print("Loading WebP file %s\n", filename);
-
-	/* Validate WebP data */
-	if (!WebPGetInfo(indata, indatalen, &width, &height)) {
-		g_print("Invalid WebP file\n");
-		return -1;
-	}
-
-	gegl_init(NULL, NULL);
-
-	WebPData wp_data;
-	wp_data.bytes = (uint8_t*)indata;
-	wp_data.size = indatalen;
-	mux = WebPMuxCreate(&wp_data, 1);
-	if (mux == NULL) {
-		return -1;
-	}
-
-	WebPMuxGetFeatures(mux, &flag);
-	if (flag == 0) {
-		g_print("No features present.\n");
-		animation = FALSE;
-		icc = FALSE;
-		exif = FALSE;
-		xmp = FALSE;
-		alpha = FALSE;
-		frames = 0;
-	} else {
-		g_print("Features present:");
-		if (flag & ANIMATION_FLAG) {
-			animation = TRUE;
-		}
-		if (flag & ICCP_FLAG) {
-			icc = TRUE;
-		}
-		if (flag & EXIF_FLAG) {
-			exif = TRUE;
-		}
-		if (flag & XMP_FLAG) {
-			xmp = TRUE;
-		}
-		if (flag & ALPHA_FLAG) {
-			alpha = TRUE;
-		}
-		g_print("\n");
-	}
-
-	/* TODO: decode the image in "chunks" or "tiles" */
-	/* TODO: check if an alpha channel is present */
-
-	/* Create the new image and associated layer */
-	image_ID = gimp_image_new(width, height, GIMP_RGB);
-
-	if (animation == FALSE) {
-		/* Attempt to decode the data as a WebP image */
-		outdata = WebPDecodeRGBA(indata, indatalen, &width, &height);
-
-		/* Free the original compressed data */
-		g_free(indata);
-
-		/* Check to ensure the image data was loaded correctly */
-		if(outdata == NULL) {
-			return -1;
-		}
-
-		gchar name[255];
-		sprintf((void*)name, "Background");
-		create_layer(image_ID, outdata, 0, (gchar*)name, width, height, 0, 0, FALSE);
-
-		/* Free the image data */
-		free(outdata);
-	} else {
-		const WebPChunkId id = WEBP_CHUNK_ANMF;
-		const char* const type_str = "frame";
-		int nFrames;
-
-		WebPMuxAnimParams params;
-		WebPMuxGetAnimationParams(mux, &params);
-		WebPMuxNumChunks(mux, id, &frames);
-		g_print("Background color : 0x%.8X\n", params.bgcolor);
-		g_print("Loop count       : %d\n", params.loop_count);
-		g_print("Number of frames : %d\n", frames);
-
-#ifdef __BACKGROUND_COLOR__
-		blue = (params.bgcolor & 0xFF000000) >> 24;
-		green = (params.bgcolor & 0xFF0000) >> 16;
-		red = (params.bgcolor & 0xFF00) >> 8;
-		gimp_rgb_set_uchar (&bgcolor, red, green, blue);
-		gimp_context_set_background (&bgcolor);
+                  GError     **error)
+{
+    gchar                *indata;
+    gsize                 indatalen;
+    gint                  width;
+    gint                  height;
+    WebPMux              *mux;
+    WebPData              wp_data;
+    uint32_t              flags;
+    gint32                image_ID;
+    uint8_t              *outdata;
+#ifdef WEBP_0_5
+    WebPMuxAnimParams     params;
+    int                   frames;
 #endif
 
-		/* Attempt to decode the data as a WebP animation image */
-		for (int loop = 0; loop < frames; loop++) {
-			g_print("=========================\n");
-			g_print("Create Frame Layer [%d]\n", loop+1);
+    /* Attempt to read the file contents from disk */
+    if (g_file_get_contents(filename,
+                            &indata,
+                            &indatalen,
+                            error) == FALSE) {
+        return -1;
+    }
 
-			WebPMuxFrameInfo thisframe;
-			int i = loop;
-			if (WebPMuxGetFrame(mux, i, &thisframe) == WEBP_MUX_OK) {
-				WebPGetFeatures(thisframe.bitstream.bytes, thisframe.bitstream.size, &features);
+    /* Validate WebP data */
+    if (!WebPGetInfo(indata, indatalen, &width, &height)) {
+        g_free(indata);
+        return -1;
+    }
 
-				g_print("Frame duration %d\nFrame dispose method %s\nFrame blend is %s\n",
-				        thisframe.duration,
-				        (thisframe.dispose_method == WEBP_MUX_DISPOSE_NONE) ? "none"
-				        : "background",
-				        (thisframe.blend_method == WEBP_MUX_BLEND) ? "yes" : "no");
-				g_print("Frame w[%d] h[%d] a[%s] offx[%d] offy[%d]\n", features.width,
-				        features.height, features.has_alpha ? "yes" : "no",
-				        thisframe.x_offset, thisframe.y_offset);
-				g_print("Frame data size is %d bytes\nCompression format is %s\n",
-				        (int)thisframe.bitstream.size,
-				        (features.format == 1) ? "lossy" :
-				        (features.format == 2) ? "lossless" :
-				        "undefined");
+#ifdef GIMP_2_9
+    /* Initialize GEGL */
+    gegl_init(NULL, NULL);
+#endif
 
-				outdata = WebPDecodeRGBA(thisframe.bitstream.bytes,
-				                         thisframe.bitstream.size,
-				                         &width, &height);
+    /* Create a WebPMux from the contents of the file */
+    wp_data.bytes = (uint8_t*)indata;
+    wp_data.size = indatalen;
+    mux = WebPMuxCreate(&wp_data, 1);
+    g_free(indata);
 
-				if(outdata == NULL) {
-					return -1;
-				}
+    if (mux == NULL) {
+        return -1;
+    }
 
-				gchar name[255];
-				sprintf((void*)name, "Frame %d", (loop+1));
-				create_layer(image_ID, (uint8_t*)outdata, 0,
-				             (gchar*)name, width, height,
-				             thisframe.x_offset,
-				             thisframe.y_offset,
-				             features.has_alpha);
+    /* Retrieve the features present */
+    if (WebPMuxGetFeatures(mux, &flags) != WEBP_MUX_OK) {
+        WebPMuxDelete(mux);
+        return -1;
+    }
 
-				/* Free the image data */
-				free(outdata);
-			}
-			WebPDataClear(&thisframe.bitstream);
-		}
+    /* TODO: decode the image in "chunks" or "tiles" */
+    /* TODO: check if an alpha channel is present */
 
-		g_print("=========================\n");
-		WebPDataClear(&wp_data);
-	}
+    /* Create the new image and associated layer */
+    image_ID = gimp_image_new(width, height, GIMP_RGB);
 
-	if (icc == TRUE) {
-		Babl             *type;
-		WebPData          icc_profile;
-		GimpColorProfile *profile;
-		gint              image = 0;
-		GimpPrecision     image_precision;
-		gboolean          profile_linear = FALSE;
-		WebPMuxGetChunk(mux, "ICCP", &icc_profile);
-		g_print("Size of the ICC profile data: %d\n", (int)icc_profile.size);
-		profile = gimp_color_profile_new_from_icc_profile(
-		              icc_profile.bytes, icc_profile.size, NULL);
-		if (profile) {
-			g_print("Loading ICC profile");
-			gimp_image_set_color_profile (image_ID, profile);
-			g_object_unref (profile);
-		}
-	}
+#ifdef WEBP_0_5
+    if (flags & ANIMATION_FLAG) {
 
-	if (exif == TRUE) {
-		WebPData exif;
-		WebPMuxGetChunk(mux, "EXIF", &exif);
-		g_print("Size of the EXIF metadata: %d\n", (int)exif.size);
-	}
+        /* Retrieve the number of frames */
+        WebPMuxNumChunks(mux, WEBP_CHUNK_ANMF, &frames);
 
-	if (xmp == TRUE) {
-		WebPData xmp;
-		WebPMuxGetChunk(mux, "XMP ", &xmp);
-		g_print("Size of the XMP metadata: %d\n", (int)xmp.size);
-	}
+        /* Loop over each of the frames - skip any with problems */
+        for (int i = 0; i < frames; ++i) {
+            WebPMuxFrameInfo thisframe;
 
+            /* Retrieve the data for the current frame */
+            if (WebPMuxGetFrame(mux, i, &thisframe) != WEBP_MUX_OK) {
+                continue;
+            }
 
-	gimp_image_set_filename(image_ID, filename);
+            /* Decode the frame */
+            outdata = WebPDecodeRGBA(thisframe.bitstream.bytes,
+                                     thisframe.bitstream.size,
+                                     &width, &height);
+            WebPDataClear(&thisframe.bitstream);
 
-	return image_ID;
+            if(!outdata) {
+                continue;
+            }
+
+            /* Create a layer for the frame */
+            char name[255];
+            snprintf(name, 255, "Frame %d", (i + 1));
+            create_layer(image_ID,
+                         outdata, 0,
+                         (gchar*)name,
+                         width, height,
+                         thisframe.x_offset,
+                         thisframe.y_offset);
+
+            /* Free the decompressed data */
+            free(outdata);
+        }
+
+    } else {
+#endif
+
+    /* Attempt to decode the data as a WebP image */
+    outdata = WebPDecodeRGBA(indata, indatalen, &width, &height);
+    if (!outdata) {
+        WebPMuxDelete(mux);
+        return -1;
+    }
+
+    /* Create a single layer */
+    create_layer(image_ID, outdata, 0, "Background", width, height, 0, 0);
+
+#ifdef WEBP_0_5
+    }
+
+    /* Load a color profile if one was provided */
+    if (flag & ICCP_FLAG) {
+        WebPData          icc_profile;
+        GimpColorProfile *profile;
+
+        /* Load the ICC profile from the file */
+        WebPMuxGetChunk(mux, WEBP_CHUNK_ICCP, &icc_profile);
+
+        /* Have Gimp load the color profile */
+        profile = gimp_color_profile_new_from_icc_profile(
+                    icc_profile.bytes, icc_profile.size, NULL);
+        if (profile) {
+            gimp_image_set_color_profile(image_ID, profile);
+            g_object_unref(profile);
+        }
+    }
+#endif
+
+    /* Set the filename for the image */
+    gimp_image_set_filename(image_ID, filename);
+
+    /* Delete the mux object */
+    WebPMuxDelete(mux);
+
+    return image_ID;
 }
