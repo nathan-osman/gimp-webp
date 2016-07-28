@@ -1,10 +1,9 @@
-gimp-webp (0.5) unstable; urgency=low
+gimp-webp (0.4) unstable; urgency=low
 
-  * Added support for importing exporting animation files.
-  * Added animation options when multiple layers present.
-  * Changed backend code to use gegl.
+  * Merge draekko/gimp-webp master
+  * Add conditional flags for compiling with Gimp 2.8.x and 2.9.x
 
- -- Ben Touchette <draekko.software+gimp@gmail.com>  Wed, 28 Jul 2017 01:55:00 0000
+ -- Nathan Osman <nathan@quickmediasolutions.com>  Thu, 28 Jul 2016 10:43:50 -0700
 
 gimp-webp (0.3) unstable; urgency=low
 
