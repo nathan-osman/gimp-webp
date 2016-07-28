@@ -23,6 +23,6 @@
 
 #include "webp-save.h"
 
-GtkResponseType save_dialog(WebPSaveParams *params);
+GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLayers);
 
 #endif /* __WEBP_DIALOG_H__ */

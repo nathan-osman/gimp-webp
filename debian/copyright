@@ -1,10 +1,11 @@
 Format: http://dep.debian.net/deps/dep5
 Upstream-Name: gimp-webp
-Upstream-Contact: Nathan Osman <nathan@quickmediasolutions.com>
-Source: https://github.com/nathan-osman/gimp-webp
+Upstream-Contact: 2016 Ben Touchette <draekko.software+gimp@gmail.com>
+Source: https://github.com/draekko/gimp-webp
 
 Files: *
 Copyright: 2015 Nathan Osman <nathan@quickmediasolutions.com>
+Copyright: 2016 Ben Touchette <draekko.software+gimp@gmail.com>
 License: GPL-3.0+
 
 License: GPL-3.0+

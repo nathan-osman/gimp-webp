@@ -80,7 +80,7 @@ void save_dialog_toggle_scale(GtkWidget *widget,
                                    !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)));
 }
 
-GtkResponseType save_dialog(WebPSaveParams *params)
+GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLayers)
 {
     GtkWidget       *dialog;
     GtkWidget       *vbox;
@@ -90,9 +90,20 @@ GtkResponseType save_dialog(WebPSaveParams *params)
     GtkListStore    *preset_list;
     GtkWidget       *preset_combo;
     GtkWidget       *lossless_checkbox;
+    GtkWidget       *animation_checkbox;
+    GtkWidget       *loop_anim_checkbox;
     GtkObject       *quality_scale;
     GtkObject       *alpha_quality_scale;
     GtkResponseType  response;
+    gboolean         animation_supported = FALSE;
+
+    g_print("Layers #%d\n", nLayers);
+    animation_supported = nLayers > 1;
+    if (animation_supported) {
+      g_print("Layers Supported\n");
+    } else {
+      g_print("Layers Not Supported\n");
+    }
 
     /* Create the dialog */
     dialog = gimp_export_dialog_new("WebP",
@@ -126,7 +137,7 @@ GtkResponseType save_dialog(WebPSaveParams *params)
     gtk_widget_show(label);
 
     /* Create the table */
-    table = gtk_table_new(4, 3, FALSE);
+    table = gtk_table_new(4, 5, FALSE);
     gtk_table_set_row_spacings(GTK_TABLE(table), 6);
     gtk_table_set_col_spacings(GTK_TABLE(table), 6);
     gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
@@ -175,9 +186,46 @@ GtkResponseType save_dialog(WebPSaveParams *params)
                      G_CALLBACK(gimp_toggle_button_update),
                      &params->lossless);
 
+    int slider1 = 2;
+    int slider2 = 3;
+    if (animation_supported == TRUE) {
+      slider1 = 4;
+      slider2 = 5;
+
+      /* Create the animation checkbox */
+      animation_checkbox = gtk_check_button_new_with_label("Use animation");
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_checkbox), params->animation);
+      gtk_table_attach(GTK_TABLE(table),
+                       animation_checkbox,
+                       1, 3,
+                       2, 3,
+                       GTK_FILL, GTK_FILL,
+                       0, 0);
+      gtk_widget_show(animation_checkbox);
+
+      g_signal_connect(animation_checkbox, "toggled",
+                       G_CALLBACK(gimp_toggle_button_update),
+                       &params->animation);
+
+      /* Create the loop animation checkbox */
+      loop_anim_checkbox = gtk_check_button_new_with_label("Loop infinitely");
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(loop_anim_checkbox), params->loop);
+      gtk_table_attach(GTK_TABLE(table),
+                       loop_anim_checkbox,
+                       1, 3,
+                       3, 4,
+                       GTK_FILL, GTK_FILL,
+                       0, 0);
+      gtk_widget_show(loop_anim_checkbox);
+
+      g_signal_connect(loop_anim_checkbox, "toggled",
+                       G_CALLBACK(gimp_toggle_button_update),
+                       &params->loop);
+    }
+
     /* Create the slider for image quality */
     quality_scale = gimp_scale_entry_new(GTK_TABLE(table),
-                                         0, 2,
+                                         0, slider1,
                                          "Image quality:",
                                          125,
                                          0,
@@ -195,7 +243,7 @@ GtkResponseType save_dialog(WebPSaveParams *params)
 
     /* Create the slider for alpha channel quality */
     alpha_quality_scale = gimp_scale_entry_new(GTK_TABLE(table),
-                                               0, 3,
+                                               0, slider2,
                                                "Alpha quality:",
                                                125,
                                                0,

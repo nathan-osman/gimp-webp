@@ -1,6 +1,7 @@
 /**
  * gimp-webp - WebP Plugin for the GIMP
  * Copyright (C) 2015  Nathan Osman
+ * Copyright (C) 2016  Ben Touchette Osman
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,11 +25,16 @@
 typedef struct {
     gchar   *preset;
     gboolean lossless;
+    gboolean animation;
+    gboolean loop;
     gfloat   quality;
     gfloat   alpha_quality;
 } WebPSaveParams;
 
 gboolean save_image(const gchar    *filename,
+                    gint32          nLayers,
+                    gint32         *allLayers,
+                    gint32          image_ID,
                     gint32          drawable_ID,
                     WebPSaveParams *params,
                     GError        **error);

@@ -69,16 +69,18 @@ void query()
         { GIMP_PDB_STRING,   "preset",        "Name of preset to use" },
         { GIMP_PDB_INT32,    "lossless",      "Use lossless encoding (0/1)" },
         { GIMP_PDB_FLOAT,    "quality",       "Quality of the image (0 <= quality <= 100)" },
-        { GIMP_PDB_FLOAT,    "alpha-quality", "Quality of the image's alpha channel (0 <= alpha-quality <= 100)" }
+        { GIMP_PDB_FLOAT,    "alpha-quality", "Quality of the image's alpha channel (0 <= alpha-quality <= 100)" },
+        { GIMP_PDB_INT32,    "animation",     "Use layers for animation (0/1)" },
+        { GIMP_PDB_INT32,    "anim-loop",     "Loop animation infinitely (0/1)" }
     };
 
     /* Install the load procedure. */
     gimp_install_procedure(LOAD_PROCEDURE,
                            "Loads images in the WebP file format",
                            "Loads images in the WebP file format",
-                           "Nathan Osman",
-                           "Copyright Nathan Osman",
-                           "2015",
+                           "Nathan Osman; Ben Touchette",
+                           "Copyright 2015 Nathan Osman; Copyright 2016 Ben Touchette",
+                           "2015;2016",
                            "WebP image",
                            NULL,
                            GIMP_PLUGIN,
@@ -91,9 +93,9 @@ void query()
     gimp_install_procedure(SAVE_PROCEDURE,
                            "Saves files in the WebP image format",
                            "Saves files in the WebP image format",
-                           "Nathan Osman",
-                           "Copyright Nathan Osman",
-                           "2015",
+                           "Nathan Osman; Ben Touchette",
+                           "Copyright 2015 Nathan Osman; Copyright 2016 Ben Touchette",
+                           "2015;2016",
                            "WebP image",
                            "RGB*",
                            GIMP_PLUGIN,
@@ -124,6 +126,8 @@ void run(const gchar * name,
     gint32            image_ID;
     gint32            drawable_ID;
     GError           *error = NULL;
+    gint32            nLayers;
+    gint32            *allLayers;
 
     /* Determine the current run mode */
     run_mode = param[0].data.d_int32;
@@ -161,12 +165,17 @@ void run(const gchar * name,
         /* Initialize the parameters to their defaults */
         params.preset        = "default";
         params.lossless      = FALSE;
+        params.animation     = FALSE;
+        params.loop          = TRUE;
         params.quality       = 90.0f;
         params.alpha_quality = 100.0f;
 
         /* Load the image and drawable IDs */
         image_ID    = param[1].data.d_int32;
         drawable_ID = param[2].data.d_int32;
+
+        allLayers = gimp_image_get_layers (image_ID, &nLayers);
+        //g_free (gimp_image_get_layers (image_ID, &nLayers));
 
         /* What happens next depends on the run mode */
         switch(run_mode) {
@@ -188,7 +197,7 @@ void run(const gchar * name,
             }
 
             /* Display the dialog */
-            if(save_dialog(&params) != GTK_RESPONSE_OK) {
+            if(save_dialog(&params, image_ID, nLayers) != GTK_RESPONSE_OK) {
                 values[0].data.d_status = GIMP_PDB_CANCEL;
                 return;
             }
@@ -198,7 +207,7 @@ void run(const gchar * name,
         case GIMP_RUN_NONINTERACTIVE:
 
             /* Ensure the correct number of parameters were supplied */
-            if(nparams != 9) {
+            if(nparams != 10) {
                 status = GIMP_PDB_CALLING_ERROR;
                 break;
             }
@@ -208,17 +217,24 @@ void run(const gchar * name,
             params.lossless      = param[6].data.d_int32;
             params.quality       = param[7].data.d_float;
             params.alpha_quality = param[8].data.d_float;
+            params.animation     = param[9].data.d_int32;
+            params.loop          = param[10].data.d_int32;
 
             break;
         }
 
         /* Attempt to save the image */
         if(!save_image(param[3].data.d_string,
+                       nLayers,
+                       allLayers,
+                       image_ID,
                        drawable_ID,
                        &params,
                        &error)) {
             status = GIMP_PDB_EXECUTION_ERROR;
         }
+
+        g_free(allLayers);
     }
 
     /* If an error was supplied, include it in the return values */
