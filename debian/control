@@ -3,7 +3,7 @@ Section: graphics
 Priority: extra
 Maintainer: Nathan Osman <nathan@quickmediasolutions.com>
 Build-Depends: debhelper (>= 9), cmake, libgimp2.0-dev, libwebp-dev
-Standards-Version: 3.9.5
+Standards-Version: 3.9.8
 Homepage: https://github.com/nathan-osman/gimp-webp
 
 Package: gimp-webp
