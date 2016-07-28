@@ -19,6 +19,7 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#cmakedefine ENABLE_ANIMATION
+#cmakedefine GIMP_2_9
+#cmakedefine WEBP_0_5
 
 #endif /* __CONFIG_H__ */

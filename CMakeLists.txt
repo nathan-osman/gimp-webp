@@ -25,38 +25,42 @@ set(PROJECT_VERSION_PATCH 0)
 find_package(PkgConfig REQUIRED)
 
 # Because Gimp 2.8.x and 2.9.x are so vastly different, they must be handled
-# differently - check the version of Gimp installed on the system. Also libwebp
-# has changed significantly between versions, so the features that are compiled
-# into the plugin depend on what's available there.
+# differently - check the version of Gimp installed on the system.
 
 pkg_check_modules(GIMP REQUIRED
     gimp-2.0>=2.8
+    gimpui-2.0>=2.8
 )
 
-# Indicate which version was found
-message(STATUS "Gimp ${GIMP_gimp-2.0_VERSION} found")
+if(NOT GIMP_2_9)
+    message(STATUS "Gimp ${GIMP_gimp-2.0_VERSION} found")
+    if("${GIMP_gimp-2.0_VERSION}" VERSION_LESS "2.9")
+        set(GIMP_2_9 0)
+    else()
+        set(GIMP_2_9 1)
+    endif()
+endif()
 
-# Determine which set of packages to look for depending on version
-if(GIMP_gimp-2.0_VERSION VERSION_LESS "2.9")
-    pkg_check_modules(GIMP REQUIRED
-        gimp-2.0>=2.8
-        gimpui-2.0>=2.8
-        libwebp>=0.4
-        libwebpmux>=0.4
-    )
-else()
-    pkg_check_modules(GIMP2 REQUIRED
-        gimp-2.0>=2.9
-        gimpui-2.0>=2.9
-        libwebp>=0.5.1
-        libwebpmux>=0.5.1
-        libwebpdemux>=0.5.1
-    )
+# Do the same for libwebp - 0.5 is required for animation support.
+
+pkg_check_modules(WEBP REQUIRED
+    libwebp>=0.4
+    libwebpmux>=0.4
+    libwebpdemux>=0.4
+)
+
+if(NOT WEBP_0_5)
+    message(STATUS "WebP ${WEBP_libwebp_VERSION} found")
+    if("${WEBP_libwebp_VERSION}" VERSION_LESS "0.5")
+        set(WEBP_0_5 0)
+    else()
+        set(WEBP_0_5 1)
+    endif()
 endif()
 
 # Add the include and library directories to the project
-include_directories(${GIMP_INCLUDE_DIRS})
-link_directories(${GIMP_LIBRARY_DIRS})
+include_directories(${GIMP_INCLUDE_DIRS} ${WEBP_INCLUDE_DIRS})
+link_directories(${GIMP_LIBRARY_DIRS} ${WEBP_LIBRARY_DIRS})
 
 # Ensure that files in ${CMAKE_CURRENT_BINARY_DIR} are available
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
