@@ -241,17 +241,14 @@ void run(const gchar * name,
         }
 
         /* Attempt to save the image */
-        if(!save_image(
-                    param[3].data.d_string
+        if (!save_image(param[3].data.d_string,
 #ifdef WEBP_0_5
-                  , nLayers
-                  , allLayers
-                  , image_ID
+                        nLayers,
+                        allLayers,
 #endif
-                  , drawable_ID
-                  , &params
-                  , &error
-                    )) {
+                        drawable_ID,
+                        &params,
+                        &error)) {
             status = GIMP_PDB_EXECUTION_ERROR;
         }
 

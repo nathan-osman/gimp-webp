@@ -116,6 +116,11 @@ gint32 load_image(const gchar *filename,
     int                   frames;
 #endif
 
+#ifdef GIMP_2_9
+    /* Initialize GEGL */
+    gegl_init(NULL, NULL);
+#endif
+
     /* Attempt to read the file contents from disk */
     if (g_file_get_contents(filename,
                             &indata,
@@ -129,11 +134,6 @@ gint32 load_image(const gchar *filename,
         g_free(indata);
         return -1;
     }
-
-#ifdef GIMP_2_9
-    /* Initialize GEGL */
-    gegl_init(NULL, NULL);
-#endif
 
     /* Create a WebPMux from the contents of the file */
     wp_data.bytes = (uint8_t*)indata;

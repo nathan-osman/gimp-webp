@@ -59,7 +59,6 @@ endif()
 pkg_check_modules(WEBP REQUIRED
     libwebp>=0.4
     libwebpmux>=0.4
-    libwebpdemux>=0.4
 )
 
 message(STATUS "WebP ${WEBP_libwebp_VERSION} found")

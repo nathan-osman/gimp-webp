@@ -21,490 +21,375 @@
 #include <libgimp/gimp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <gegl.h>
 #include <webp/encode.h>
 #include <webp/mux.h>
 
 #include "webp-save.h"
 
-WebPPreset webp_preset_by_name(gchar *name) {
-	if(!strcmp(name, "picture")) {
-		return WEBP_PRESET_PICTURE;
-	} else if(!strcmp(name, "photo")) {
-		return WEBP_PRESET_PHOTO;
-	} else if(!strcmp(name, "drawing")) {
-		return WEBP_PRESET_DRAWING;
-	} else if(!strcmp(name, "icon")) {
-		return WEBP_PRESET_ICON;
-	} else if(!strcmp(name, "text")) {
-		return WEBP_PRESET_TEXT;
-	} else {
-		return WEBP_PRESET_DEFAULT;
-	}
+#ifdef GIMP_2_9
+#  include <gegl.h>
+#endif
+
+/* Determine which WebP preset to use given its name */
+WebPPreset webp_preset_by_name(gchar *name)
+{
+    if (!strcmp(name, "picture")) {
+        return WEBP_PRESET_PICTURE;
+    } else if (!strcmp(name, "photo")) {
+        return WEBP_PRESET_PHOTO;
+    } else if (!strcmp(name, "drawing")) {
+        return WEBP_PRESET_DRAWING;
+    } else if (!strcmp(name, "icon")) {
+        return WEBP_PRESET_ICON;
+    } else if (!strcmp(name, "text")) {
+        return WEBP_PRESET_TEXT;
+    } else {
+        return WEBP_PRESET_DEFAULT;
+    }
 }
 
-int webp_anim_file_writer(FILE *outfile,
-                          const uint8_t* data,
-                          size_t data_size) {
-	int ok = 0;
-
-	if (data == NULL) {
-		return 0;
-	}
-
-	ok = (fwrite(data, data_size, 1, outfile) == 1);
-
-	return ok;
-}
-
+/* Write the provided data to the file */
 int webp_file_writer(const uint8_t     *data,
                      size_t             data_size,
-                     const WebPPicture *picture) {
-	FILE *outfile;
+                     const WebPPicture *picture)
+{
+    FILE *outfile;
 
-	/* Obtain the FILE* and write the data to the file */
-	outfile = (FILE*)picture->custom_ptr;
-	return fwrite(data, sizeof(uint8_t), data_size, outfile) == data_size;
+    /* Obtain the FILE* and write the data to the file */
+    outfile = (FILE*)picture->custom_ptr;
+    return fwrite(data, sizeof(uint8_t), data_size, outfile) == data_size;
 }
 
+/* Update progress as data is written to the file */
 int webp_file_progress(int                percent,
-                       const WebPPicture *picture) {
-	return gimp_progress_update(percent / 100.0);
+                       const WebPPicture *picture)
+{
+    return gimp_progress_update(percent / 100.0);
 }
 
-const gchar *webp_error_string(WebPEncodingError error_code) {
-	switch(error_code) {
-	case VP8_ENC_ERROR_OUT_OF_MEMORY:
-		return "out of memory";
-	case VP8_ENC_ERROR_BITSTREAM_OUT_OF_MEMORY:
-		return "not enough memory to flush bits";
-	case VP8_ENC_ERROR_NULL_PARAMETER:
-		return "NULL parameter";
-	case VP8_ENC_ERROR_INVALID_CONFIGURATION:
-		return "invalid configuration";
-	case VP8_ENC_ERROR_BAD_DIMENSION:
-		return "bad image dimensions";
-	case VP8_ENC_ERROR_PARTITION0_OVERFLOW:
-		return "partition is bigger than 512K";
-	case VP8_ENC_ERROR_PARTITION_OVERFLOW:
-		return "partition is bigger than 16M";
-	case VP8_ENC_ERROR_BAD_WRITE:
-		return "unable to flush bytes";
-	case VP8_ENC_ERROR_FILE_TOO_BIG:
-		return "file is larger than 4GiB";
-	case VP8_ENC_ERROR_USER_ABORT:
-		return "user aborted encoding";
-	case VP8_ENC_ERROR_LAST:
-		return "list terminator";
-	default:
-		return "unknown error";
-	}
+/* Convert error into a human-readable message */
+const gchar *webp_error_string(WebPEncodingError error_code)
+{
+    switch(error_code) {
+    case VP8_ENC_ERROR_OUT_OF_MEMORY:
+        return "out of memory";
+    case VP8_ENC_ERROR_BITSTREAM_OUT_OF_MEMORY:
+        return "not enough memory to flush bits";
+    case VP8_ENC_ERROR_NULL_PARAMETER:
+        return "NULL parameter";
+    case VP8_ENC_ERROR_INVALID_CONFIGURATION:
+        return "invalid configuration";
+    case VP8_ENC_ERROR_BAD_DIMENSION:
+        return "bad image dimensions";
+    case VP8_ENC_ERROR_PARTITION0_OVERFLOW:
+        return "partition is bigger than 512K";
+    case VP8_ENC_ERROR_PARTITION_OVERFLOW:
+        return "partition is bigger than 16M";
+    case VP8_ENC_ERROR_BAD_WRITE:
+        return "unable to flush bytes";
+    case VP8_ENC_ERROR_FILE_TOO_BIG:
+        return "file is larger than 4GiB";
+    case VP8_ENC_ERROR_USER_ABORT:
+        return "user aborted encoding";
+    case VP8_ENC_ERROR_LAST:
+        return "list terminator";
+    default:
+        return "unknown error";
+    }
 }
 
-gboolean save_single_layer(const gchar    *filename,
-                           gint32          nLayers,
-                           gint32          image_ID,
-                           gint32          drawable_ID,
-                           WebPSaveParams *params,
-                           GError        **error) {
-	gboolean          status   = FALSE;
-	FILE             *outfile  = NULL;
-	WebPConfig        config   = {0};
-	WebPPicture       picture  = {0};
-	guchar           *buffer   = NULL;
-	gint              w, h;
-	gint              bpp;
-	GimpColorProfile *profile;
-	GimpImageType     drawable_type;
-	GeglBuffer       *geglbuffer;
-	GeglRectangle     extent;
-	gchar            *indata;
-	gsize             indatalen;
-	struct            stat stsz;
-  int               fd_outfile;
-
-	/* The do...while() loop is a neat little trick that makes it easier to
-	 * jump to error handling code while still ensuring proper cleanup */
-
-	do {
-		/* Begin displaying export progress */
-		gimp_progress_init_printf("Saving '%s'",
-		                          gimp_filename_to_utf8(filename));
-
-		/* Attempt to open the output file */
-		if((outfile = g_fopen(filename, "wb+")) == NULL) {
-			g_set_error(error,
-			            G_FILE_ERROR,
-			            g_file_error_from_errno(errno),
-			            "Unable to open '%s' for writing",
-			            gimp_filename_to_utf8(filename));
-			break;
-		}
-
-		/* Obtain the drawable type */
-		drawable_type = gimp_drawable_type(drawable_ID);
-
-		/* Retrieve the buffer for the layer */
-		geglbuffer = gimp_drawable_get_buffer(drawable_ID);
-		extent = *gegl_buffer_get_extent(geglbuffer);
-		bpp = gimp_drawable_bpp(drawable_ID);
-		w = extent.width;
-		h = extent.height;
-
-		/* Initialize the WebP configuration with a preset and fill in the
-		 * remaining values */
-		WebPConfigPreset(&config,
-		                 webp_preset_by_name(params->preset),
-		                 params->quality);
-
-		config.lossless      = params->lossless;
-		config.method        = 6;  /* better quality */
-		config.alpha_quality = params->alpha_quality;
-
-		/* Prepare the WebP structure */
-		WebPPictureInit(&picture);
-		picture.use_argb      = 1;
-		picture.width         = w;
-		picture.height        = h;
-		picture.writer        = webp_file_writer;
-		picture.custom_ptr    = outfile;
-		picture.progress_hook = webp_file_progress;
-
-		/* Attempt to allocate a buffer of the appropriate size */
-		buffer = (guchar *)g_malloc(w * h * bpp);
-		if(!buffer) {
-			break;
-		}
-
-		/* Read the region into the buffer */
-		gegl_buffer_get (geglbuffer, &extent, 1.0, NULL, buffer,
-		                 GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
-
-		/* Use the appropriate function to import the data from the buffer */
-		if(drawable_type == GIMP_RGB_IMAGE) {
-			WebPPictureImportRGB(&picture, buffer, w * bpp);
-		} else {
-			WebPPictureImportRGBA(&picture, buffer, w * bpp);
-		}
-
-		/* Perform the actual encode */
-		if(!WebPEncode(&config, &picture)) {
-			g_print("WebP error: '%s'",
-			        webp_error_string(picture.error_code));
-			g_set_error(error,
-			            G_FILE_ERROR,
-			            picture.error_code,
-			            "WebP error: '%s'",
-			            webp_error_string(picture.error_code));
-			break;
-		}
-
-		/* The cleanup stuff still needs to run but indicate that everything
-		 * completed successfully */
-		status = TRUE;
-
-	} while(0);
-
-	/* Flush the drawable and detach */
-	gegl_buffer_flush (geglbuffer);
-	g_object_unref(geglbuffer);
-
-	fflush(outfile);
-	fd_outfile = fileno(outfile);
-	fstat(fd_outfile, &stsz);
-	indatalen = stsz.st_size;
-	if (indatalen > 0) {
-		indata = (gchar*)g_malloc(indatalen);
-		rewind(outfile);
-    int res = fread(indata, 1, indatalen, outfile);
-		if (res > 0) {
-			WebPMux *mux;
-			WebPData wp_data;
-			wp_data.bytes = (uint8_t*)indata;
-			wp_data.size = indatalen;
-			mux = WebPMuxCreate(&wp_data, 1);
-
-			if (mux != NULL) {
-				gboolean saved = FALSE;
-				/* Save ICC data */
-				profile = gimp_image_get_color_profile (image_ID);
-				if (profile) {
-					saved = TRUE;
-					WebPData      chunk;
-					const guint8 *icc_data;
-					gsize         icc_data_size;
-					g_print("Retrieving ICC profile\n");
-					icc_data = gimp_color_profile_get_icc_profile (profile, &icc_data_size);
-					chunk.bytes = icc_data;
-					chunk.size = icc_data_size;
-					WebPMuxSetChunk(mux, "ICCP", &chunk, 1);
-					g_object_unref (profile);
-				}
-
-				if (saved == TRUE) {
-					g_print("Saving feature data\n");
-					WebPMuxAssemble(mux, &wp_data);
-					rewind(outfile);
-					webp_anim_file_writer(outfile, wp_data.bytes, wp_data.size);
-				}
-			} else {
-				g_printerr("ERROR: Cannot create mux. Can't save features update.\n");
-			}
-
-			WebPDataClear(&wp_data);
-		} else {
-		  g_printerr("ERROR: No data read for features. Can't save features update.\n");
-		}
-	} else {
-		g_printerr("ERROR: No data for features. Can't save features update.\n");
-	}
-
-	/* Free any resources */
-	if(outfile) {
-		fclose(outfile);
-	}
-
-	if(buffer) {
-		free(buffer);
-	}
-
-	WebPPictureFree(&picture);
-
-	return status;
-}
-
-gboolean save_all_layers(const gchar    *filename,
-                         gint32          nLayers,
-                         gint32         *allLayers,
-                         gint32          image_ID,
-                         gint32          drawable_ID,
-                         WebPSaveParams *params,
-                         GError        **error) {
-	gboolean          status   = FALSE;
-	FILE             *outfile  = NULL;
-	WebPConfig        config   = {0};
-	guchar           *buffer   = NULL;
-	guchar            r, g, b, a;
-	gint              w, h, bpp;
-	GimpImageType     drawable_type;
-	GimpRGB           bgcolor;
-	GimpColorProfile *profile;
-	WebPAnimEncoderOptions enc_options;
-	WebPData          webp_data;
-	int               frame_timestamp = 0;
-	WebPAnimEncoder  *enc;
-
-	g_print("attempting to save (all) %d layer(s)\n", nLayers);
-
-	if (nLayers < 1)
-		return FALSE;
-
-	do {
-		/* Begin displaying export progress */
-		gimp_progress_init_printf("Saving '%s'",
-		                          gimp_filename_to_utf8(filename));
-
-		/* Attempt to open the output file */
-		if((outfile = g_fopen(filename, "wb")) == NULL) {
-			g_set_error(error,
-			            G_FILE_ERROR,
-			            g_file_error_from_errno(errno),
-			            "Unable to open '%s' for writing",
-			            gimp_filename_to_utf8(filename));
-			break;
-		}
-
-		WebPDataInit(&webp_data);
-		if (!WebPAnimEncoderOptionsInit(&enc_options)) {
-			g_print("[WebPAnimEncoderOptionsInit]ERROR: verion mismatch\n");
-			break;
-		}
-
-		g_print("=========================\n");
-
-		for (int loop = 0; loop < nLayers; loop++) {
-			/* Obtain the drawable type */
-			drawable_type = gimp_drawable_type(allLayers[loop]);
-
-			/* Retrieve the buffer for the layer */
-			GeglBuffer       *geglbuffer;
-			GeglRectangle     extent;
-			geglbuffer = gimp_drawable_get_buffer (allLayers[loop]);
-			extent = *gegl_buffer_get_extent (geglbuffer);
-			bpp = gimp_drawable_bpp (allLayers[loop]);
-			w = extent.width;
-			h = extent.height;
-			if (loop == 0) {
-				g_print("Image size h[%d] x w[%d]\n", w, h);
-			}
-
-			g_print("Encoding frame[%d:%d]\n", loop+1, nLayers);
-
-			if (loop == 0) {
-				enc = WebPAnimEncoderNew(w, h, &enc_options);
-				if (enc == NULL) {
-					g_print("[WebPAnimEncoderNew]ERROR: enc == null\n");
-					break;
-				}
-			}
-
-			/* Attempt to allocate a buffer of the appropriate size */
-			buffer = (guchar *)g_malloc(w * h * bpp);
-			if(!buffer) {
-				g_print("Buffer error: 'buffer null'\n");
-				status = FALSE;
-				break;
-			}
-
-			WebPConfig config;
-			WebPConfigInit(&config);
-			WebPConfigPreset(&config,
-			                 webp_preset_by_name(params->preset),
-			                 params->quality);
-
-			config.lossless      = params->lossless;
-			config.method        = 6;  /* better quality */
-			config.alpha_quality = params->alpha_quality;
-			config.exact         = 1;
-
-			WebPMemoryWriter mw = { 0 };
-			WebPMemoryWriterInit(&mw);
-
-			/* Prepare the WebP structure */
-			WebPPicture picture;
-			WebPPictureInit(&picture);
-			picture.use_argb      = 1;
-			picture.argb_stride   = w * bpp;
-			picture.width         = w;
-			picture.height        = h;
-			picture.custom_ptr    = &mw;
-			picture.writer        = WebPMemoryWrite;
-			picture.progress_hook = webp_file_progress;
-
-			/* Read the region into the buffer */
-			gegl_buffer_get (geglbuffer, &extent, 1.0, NULL, buffer,
-			                 GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
-
-			/* Use the appropriate function to import the data from the buffer */
-			if(drawable_type == GIMP_RGB_IMAGE) {
-				WebPPictureImportRGB(&picture, buffer, w * bpp);
-			} else {
-				WebPPictureImportRGBA(&picture, buffer, w * bpp);
-			}
-
-			/* Perform the actual encode */
-			if (!WebPAnimEncoderAdd (enc, &picture, frame_timestamp, &config)) {
-				g_print("[WebPAnimEncoderAdd]ERROR[%d]: %s\n",
-				        picture.error_code,
-				        webp_error_string(picture.error_code));
-			}
-
-			WebPMemoryWriterClear(&mw);
-			WebPPictureFree(&picture);
-
-			if(buffer) {
-				free(buffer);
-			}
-
-			/* Flush the drawable and detach */
-			gegl_buffer_flush (geglbuffer);
-			g_object_unref(geglbuffer);
-		}
-
-		g_print("=========================\n");
-
-		WebPAnimEncoderAdd(enc, NULL, frame_timestamp, NULL);
-
-		if (!WebPAnimEncoderAssemble(enc, &webp_data)) {
-			g_print("[WebPAnimEncoderAssemble]ERROR: %s\n",
-			        WebPAnimEncoderGetError(enc));
-		}
-
-		/* Set animations parameters */
-		WebPMux           *mux;
-		WebPMuxAnimParams  anim_params = {0};
-
-		mux = WebPMuxCreate(&webp_data, 1);
-
-		/* Anim parameters */
-#ifdef __BACKGROUND_COLOR__
-		gimp_context_get_background (&bgcolor);
-		gimp_rgb_get_uchar (&bgcolor, &r, &g, &b);
-		anim_params.bgcolor = (b << 24) + (g << 16) + (r << 8) + 0xFF;
+/* Save a layer from an image */
+gboolean save_layer(gint32             drawable_ID,
+                    WebPWriterFunction writer,
+                    void              *custom_ptr,
+#ifdef WEBP_0_5
+                    gboolean           animation,
+                    WebPAnimEncoder   *enc,
+                    int                frame_timestamp,
 #endif
-		anim_params.loop_count = 0;
-		if (params->loop == FALSE) {
-			anim_params.loop_count = 1;
-		}
+                    WebPSaveParams    *params,
+                    GError           **error)
+{
+    gboolean          status   = FALSE;
+    gint              bpp;
+    gint              width;
+    gint              height;
+    GimpImageType     drawable_type;
+    WebPConfig        config;
+    WebPPicture       picture;
+    guchar           *buffer   = NULL;
+#ifdef GIMP_2_9
+    GeglBuffer       *geglbuffer;
+    GeglRectangle     extent;
+#else
+    GimpDrawable     *drawable = NULL;
+    GimpPixelRgn      region;
+#endif
 
-		WebPMuxSetAnimationParams(mux, &anim_params);
+    /* Retrieve the image data */
+    bpp = gimp_drawable_bpp(drawable_ID);
+    width = gimp_drawable_width(drawable_ID);
+    height = gimp_drawable_height(drawable_ID);
+    drawable_type = gimp_drawable_type(drawable_ID);
 
-		/* Save ICC data */
-		profile = gimp_image_get_color_profile (image_ID);
-		if (profile) {
-			WebPData      chunk;
-			const guint8 *icc_data;
-			gsize         icc_data_size;
-			g_print("Saving ICC profile");
-			icc_data = gimp_color_profile_get_icc_profile (profile, &icc_data_size);
-			chunk.bytes = icc_data;
-			chunk.size = icc_data_size;
-			WebPMuxSetChunk(mux, "ICCP", &chunk, 1);
-			g_object_unref (profile);
-		}
+    /* Initialize the WebP configuration with a preset and fill in the
+     * remaining values */
+    WebPConfigPreset(&config,
+                     webp_preset_by_name(params->preset),
+                     params->quality);
 
-		WebPMuxAssemble(mux, &webp_data);
+    config.lossless      = params->lossless;
+    config.method        = 6;  /* better quality */
+    config.alpha_quality = params->alpha_quality;
 
-		g_print("File data size : %ld\n", webp_data.size);
-		webp_anim_file_writer(outfile, webp_data.bytes, webp_data.size);
+    /* Prepare the WebP structure */
+    WebPPictureInit(&picture);
+    picture.use_argb      = 1;
+    picture.width         = width;
+    picture.height        = height;
+    picture.writer        = writer;
+    picture.custom_ptr    = custom_ptr;
+    picture.progress_hook = webp_file_progress;
 
-		WebPDataClear(&webp_data);
-		WebPAnimEncoderDelete(enc);
+    do {
+        /* Attempt to allocate a buffer of the appropriate size */
+        buffer = (guchar *)g_malloc(bpp * width * height);
+        if(!buffer) {
+            g_set_error(error,
+                        G_FILE_ERROR,
+                        0,
+                        "Unable to allocate buffer for layer");
+            break;
+        }
 
-		status = TRUE;
+#ifdef GIMP_2_9
+        /* Obtain the buffer and get its extent */
+        geglbuffer = gimp_drawable_get_buffer(drawable_ID);
+        extent = *gegl_buffer_get_extent(geglbuffer);
 
+        /* Read the layer buffer into our buffer */
+        gegl_buffer_get(geglbuffer, &extent, 1.0, NULL, buffer,
+                        GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
 
-	} while(0);
+        g_object_unref(geglbuffer);
+#else
+        /* Get the drawable */
+        drawable = gimp_drawable_get(drawable_ID);
 
-	/* Free any resources */
-	if(outfile) {
-		fclose(outfile);
-	}
+        /* Obtain the pixel region for the drawable */
+        gimp_pixel_rgn_init(&region,
+                            drawable,
+                            0, 0,
+                            width,
+                            height,
+                            FALSE, FALSE);
 
-	return status;
+        /* Read the region into the buffer */
+        gimp_pixel_rgn_get_rect(&region,
+                                buffer,
+                                0, 0,
+                                width,
+                                height);
+
+        gimp_drawable_detach(drawable);
+#endif
+
+        /* Use the appropriate function to import the data from the buffer */
+        if(drawable_type == GIMP_RGB_IMAGE) {
+            WebPPictureImportRGB(&picture, buffer, width * bpp);
+        } else {
+            WebPPictureImportRGBA(&picture, buffer, width * bpp);
+        }
+
+#ifdef WEBP_0_5
+        if (animation == TRUE) {
+
+            if (!WebPAnimEncoderAdd(enc, &picture, frame_timestamp, &config)) {
+                g_set_error(error,
+                            G_FILE_ERROR,
+                            picture.error_code,
+                            "WebP error: '%s'",
+                            webp_error_string(picture.error_code));
+                break;
+            }
+        } else {
+#endif
+            if(!WebPEncode(&config, &picture)) {
+                g_set_error(error,
+                            G_FILE_ERROR,
+                            picture.error_code,
+                            "WebP error: '%s'",
+                            webp_error_string(picture.error_code));
+                break;
+            }
+#ifdef WEBP_0_5
+        }
+#endif
+
+        /* Everything succeeded */
+        status = TRUE;
+
+    } while(0);
+
+    /* Free the buffer */
+    if (buffer) {
+        free(buffer);
+    }
+
+    return status;
 }
 
+#ifdef WEBP_0_5
+/* Save an animation to disk */
+gboolean save_animation(gint32          nLayers,
+                        gint32         *allLayers,
+                        WebPSaveParams *params,
+                        GError        **error)
+{
+    gboolean               status          = FALSE;
+    gboolean               innerStatus     = FALSE;
+    WebPAnimEncoderOptions enc_options;
+    WebPAnimEncoder       *enc             = NULL;
+    int                    frame_timestamp = 0;
+    WebPData               webp_data       = {0};
+    WebPMux               *mux;
+    WebPMuxAnimParams      anim_params     = {0};
+
+    /* Prepare for encoding an animation */
+    WebPAnimEncoderOptionsInit(&enc_options);
+
+    do {
+        /* Create the encoder */
+        enc = WebPAnimEncoderNew(gimp_drawable_width(drawable_ID),
+                                 gimp_drawable_height(drawable_ID),
+                                 &enc_options);
+
+        /* Encode each layer */
+        for (int i = 0; i < nLayers; i++) {
+            if ((innerStatus = save_layer(allLayers[i],
+                                          params,
+                                          NULL,
+                                          NULL,
+                                          TRUE,
+                                          enc,
+                                          frame_timestamp,
+                                          error)) == FALSE) {
+                break;
+            }
+        }
+
+        /* Check to make sure each layer was encoded correctly */
+        if (innerStatus == FALSE) {
+            break;
+        }
+
+        /* Add NULL frame */
+        WebPAnimEncoderAdd(enc, NULL, frame_timestamp, NULL);
+
+        /* Initialize the WebP image structure */
+        WebPDataInit(&webp_data);
+
+        /* Write the animation to the image */
+        if (!WebPAnimEncoderAssemble(enc, &webp_data)) {
+            g_set_error(error,
+                        G_FILE_ERROR,
+                        0,
+                        "Encoding error: '%s'",
+                        WebPAnimEncoderGetError(enc));
+            break;
+        }
+
+        /* Create a Mux */
+        mux = WebPMuxCreate(&webp_data, 1);
+
+        /* Set animation parameters */
+        anim_params.loop_count = params->loop == TRUE ? 0 : 1;
+        WebPMuxSetAnimationParams(mux, &anim_params);
+
+        /* Assemble the image */
+        WebPMuxAssemble(mux, &webp_data);
+
+        /* Write to disk */
+        if (fwrite(webp_data.bytes, webp_data.size, 1, outfile) != 1) {
+            break;
+        }
+
+        /* Everything succeeded */
+        status = TRUE;
+
+    } while(0);
+
+    /* Free image data */
+    WebPDataClear(&webp_data);
+
+    /* Free the animation encoder */
+    if (enc) {
+        WebPAnimEncoderDelete(enc);
+    }
+
+    return status;
+}
+#endif
+
+/* Save a WebP image to disk */
 gboolean save_image(const gchar    *filename,
+#ifdef WEBP_0_5
                     gint32          nLayers,
                     gint32         *allLayers,
-                    gint32          image_ID,
+#endif
                     gint32          drawable_ID,
                     WebPSaveParams *params,
-                    GError        **error) {
-	gboolean status = FALSE;
+                    GError        **error)
+{
+    gboolean status  = FALSE;
+    FILE    *outfile = NULL;
 
-	if (nLayers == 0) {
-		return FALSE;
-	}
+#ifdef GIMP_2_9
+    /* Initialize GEGL */
+    gegl_init(NULL, NULL);
+#endif
 
-	gegl_init(NULL, NULL);
+    /* Begin displaying export progress */
+    gimp_progress_init_printf("Saving '%s'",
+                              gimp_filename_to_utf8(filename));
 
-	g_print("attempting to save %d layers\n", nLayers);
+    /* Attempt to open the output file */
+    if((outfile = g_fopen(filename, "wb+")) == NULL) {
+        g_set_error(error,
+                    G_FILE_ERROR,
+                    g_file_error_from_errno(errno),
+                    "Unable to open '%s' for writing",
+                    gimp_filename_to_utf8(filename));
+        return FALSE;
+    }
 
-	if (nLayers == 1) {
-		status = save_single_layer(filename, nLayers, image_ID, drawable_ID, params, error);
-	} else {
-		if (params->animation == FALSE) {
-			status = save_single_layer(filename, nLayers, image_ID, drawable_ID, params, error);
-		} else {
-			status = save_all_layers(filename, nLayers, allLayers, image_ID, drawable_ID, params, error);
-		}
-	}
+#ifdef WEBP_0_5
+    if (params->animation == TRUE) {
+        status = save_animation(nLayers
+                                allLayers,
+                                outfile,
+                                params,
+                                error);
+    } else {
+#endif
+        status = save_layer(drawable_ID,
+                            webp_file_writer,
+                            outfile,
+#ifdef WEBP_0_5
+                            FALSE,
+                            NULL,
+                            0,
+#endif
+                            params,
+                            error);
+#ifdef WEBP_0_5
+    }
+#endif
 
-	g_print("Saved Layers #%d\n", nLayers);
+    /* Close the file */
+    if(outfile) {
+        fclose(outfile);
+    }
 
-	/* Return the status */
-	return status;
+    return status;
 }

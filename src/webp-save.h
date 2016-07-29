@@ -21,19 +21,24 @@
 
 #include <glib.h>
 
+#include "config.h"
+
 typedef struct {
     gchar   *preset;
     gboolean lossless;
     gfloat   quality;
     gfloat   alpha_quality;
+#ifdef WEBP_0_5
     gboolean animation;
     gboolean loop;
+#endif
 } WebPSaveParams;
 
 gboolean save_image(const gchar    *filename,
+#ifdef WEBP_0_5
                     gint32          nLayers,
                     gint32         *allLayers,
-                    gint32          image_ID,
+#endif
                     gint32          drawable_ID,
                     WebPSaveParams *params,
                     GError        **error);
