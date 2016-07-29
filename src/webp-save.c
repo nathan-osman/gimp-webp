@@ -247,7 +247,7 @@ gboolean save_animation(gint32          nLayers,
                         GError        **error)
 {
     gboolean               status          = FALSE;
-    gboolean               innerStatus     = FALSE;
+    gboolean               innerStatus     = TRUE;
     WebPAnimEncoderOptions enc_options;
     WebPAnimEncoder       *enc             = NULL;
     int                    frame_timestamp = 0;

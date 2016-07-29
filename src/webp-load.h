@@ -21,7 +21,8 @@
 
 #include <glib.h>
 
-gint32 load_image(const gchar *filename,
-                  GError     **error);
+gboolean load_image(const gchar *filename,
+                    gint32      *image_ID,
+                    GError     **error);
 
 #endif /* __WEBP_LOAD_H__ */
