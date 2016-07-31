@@ -21,6 +21,8 @@ The build process consists of:
     cmake ..
     make
 
+(Note: exif and xmp support requires patching exiv2 as it doesn't support webp yet.)
+
 ### Installation
 
 On most *nix platforms, installation is as simple as:
