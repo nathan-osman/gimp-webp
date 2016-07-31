@@ -144,7 +144,7 @@ void run(const gchar * name,
         /* No need to determine whether the plugin is being invoked
          * interactively here since we don't need a UI for loading */
 
-        image_ID = load_image(param[1].data.d_string, &error);
+        image_ID = load_image(param[1].data.d_string, FALSE, &error);
 
         if(image_ID != -1) {
 

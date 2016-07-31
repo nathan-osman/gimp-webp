@@ -97,13 +97,7 @@ GtkResponseType save_dialog(WebPSaveParams *params, gint32 image_ID, gint32 nLay
     GtkResponseType  response;
     gboolean         animation_supported = FALSE;
 
-    g_print("Layers #%d\n", nLayers);
     animation_supported = nLayers > 1;
-    if (animation_supported) {
-      g_print("Layers Supported\n");
-    } else {
-      g_print("Layers Not Supported\n");
-    }
 
     /* Create the dialog */
     dialog = gimp_export_dialog_new("WebP",
