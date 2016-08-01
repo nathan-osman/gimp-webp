@@ -1,0 +1,38 @@
+Format: 1.8
+Date: Mon, 01 Aug 2016 19:57:57 +0000
+Source: libwebp
+Binary: libwebp-dev libwebp5 libwebpmux1 libwebpdemux1 webp
+Architecture: amd64
+Version: 0.5.1-1.1
+Distribution: unstable
+Urgency: medium
+Maintainer: Jeff Breidenbach <jab@debian.org>
+Changed-By: Ben Touchette <draekko.software+gimp@gmail.com>
+Description:
+ libwebp-dev - Lossy compression of digital photographic images.
+ libwebp5   - Lossy compression of digital photographic images.
+ libwebpdemux1 - Lossy compression of digital photographic images.
+ libwebpmux1 - Lossy compression of digital photographic images.
+ webp       - Lossy compression of digital photographic images.
+Changes:
+ libwebp (0.5.1-1.1) unstable; urgency=medium
+ .
+   * Non-maintainer upload.
+Checksums-Sha1:
+ a05453e43f071513b582e7bd8e6d9fd073369604 250988 libwebp-dev_0.5.1-1.1_amd64.deb
+ fbdf81718bdc985aa56a3b0175e9d44b11702c2b 171838 libwebp5_0.5.1-1.1_amd64.deb
+ eb812e92d10c093162116c7347ea49d83260a0ca 9754 libwebpdemux1_0.5.1-1.1_amd64.deb
+ 62dc9c087ccbb9bf90b1aa3120ef4341bc549111 19882 libwebpmux1_0.5.1-1.1_amd64.deb
+ 867702b1b94783a009b4d49fc20d6b90a3042672 58576 webp_0.5.1-1.1_amd64.deb
+Checksums-Sha256:
+ a8ba4b461f07ebd9aa00cfd833e9193398fa451b2f86ac5eb509a6d1de440057 250988 libwebp-dev_0.5.1-1.1_amd64.deb
+ f6eecd0ff3b2909e9b8085380ae89b798e86d4d24774e28f2188a81694739d90 171838 libwebp5_0.5.1-1.1_amd64.deb
+ 825e8e7b5ad2301e17e9e46dbfb264221952012eedbe1b55cbe9c7ec9a779486 9754 libwebpdemux1_0.5.1-1.1_amd64.deb
+ 23f30da8e6c7807d6f56c4367b0f88463259681492022a8ca9ce1078d813b06f 19882 libwebpmux1_0.5.1-1.1_amd64.deb
+ 67c41582760d150e20c489976f940c1c09013b5b4e5662622d7e6a5089f585ee 58576 webp_0.5.1-1.1_amd64.deb
+Files:
+ 158d91d5c98eac0eea7016810a8436f5 250988 libdevel optional libwebp-dev_0.5.1-1.1_amd64.deb
+ bf7edfd2bad24f15582ae3e8958158c7 171838 libs optional libwebp5_0.5.1-1.1_amd64.deb
+ d963f94099d3139580becfd9add94d0e 9754 libs optional libwebpdemux1_0.5.1-1.1_amd64.deb
+ 193a1b57ae221961429a1ff659920e57 19882 libs optional libwebpmux1_0.5.1-1.1_amd64.deb
+ 77bf30fd6a55b9f6cbc3fb75ff0628b6 58576 graphics optional webp_0.5.1-1.1_amd64.deb
