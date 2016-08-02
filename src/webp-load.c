@@ -207,35 +207,36 @@ gboolean load_image(const gchar *filename,
         error:
             break;
 
-        success:
+        success: ;
 
         } else {
 #endif
 
-        /* Attempt to decode the data as a WebP image */
-        outdata = WebPDecodeRGBA(indata, indatalen, &width, &height);
-        if (!outdata) {
-            break;
-        }
+            /* Attempt to decode the data as a WebP image */
+            outdata = WebPDecodeRGBA(indata, indatalen, &width, &height);
+            if (!outdata) {
+                break;
+            }
 
-        /* Create a single layer */
-        status = create_layer(*image_ID,
-                              outdata,
-                              0,
-                              "Background",
-                              width, height,
-                              0, 0);
+            /* Create a single layer */
+            status = create_layer(*image_ID,
+                                  outdata,
+                                  0,
+                                  "Background",
+                                  width, height,
+                                  0, 0);
 
 #ifdef WEBP_0_5
-    }
+        }
 
+#ifdef GIMP_2_9
         /* Load a color profile if one was provided */
-        if (flag & ICCP_FLAG) {
+        if (flags & ICCP_FLAG) {
             WebPData          icc_profile;
             GimpColorProfile *profile;
 
             /* Load the ICC profile from the file */
-            WebPMuxGetChunk(mux, WEBP_CHUNK_ICCP, &icc_profile);
+            WebPMuxGetChunk(mux, "ICCP", &icc_profile);
 
             /* Have Gimp load the color profile */
             profile = gimp_color_profile_new_from_icc_profile(
@@ -246,7 +247,7 @@ gboolean load_image(const gchar *filename,
             }
         }
 #endif
-
+#endif
         /* Set the filename for the image */
         gimp_image_set_filename(*image_ID, filename);
 
