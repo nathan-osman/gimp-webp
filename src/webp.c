@@ -111,7 +111,7 @@ void query()
     gimp_register_magic_load_handler (LOAD_PROCEDURE,
                                       "webp",
                                       "",
-                                      "0,string,RIFF*WEBP");
+                                      "8,string,WEBP");
 
     /* Now register the save handlers. */
     gimp_register_file_handler_mime(SAVE_PROCEDURE, "image/webp");
