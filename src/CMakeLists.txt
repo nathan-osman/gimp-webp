@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Prepare the configuration file
+configure_file(config.h.in "${CMAKE_CURRENT_BINARY_DIR}/config.h")
+
 # Specify each of the required source files
 set(SRC
     webp-dialog.c
@@ -23,7 +26,7 @@ set(SRC
 
 # Build the file-webp executable
 add_executable(file-webp ${SRC})
-target_link_libraries(file-webp ${GIMP_LIBRARIES})
+target_link_libraries(file-webp ${GIMP_LIBRARIES} ${GEGL_LIBRARIES} ${WEBP_LIBRARIES})
 
 # In order to determine the correct installation directory, we need to directly
 # invoke pkg-config to obtain the lib/ directory

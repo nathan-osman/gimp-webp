@@ -24,7 +24,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <glib/gprintf.h>
+#include <config.h>
+#ifdef GIMP_2_9
 #include <gegl.h>
+#endif
 #include <webp/decode.h>
 #include <webp/demux.h>
 #include <webp/mux.h>
@@ -35,9 +38,14 @@ void create_layer(gint32 image_ID, uint8_t *layer_data, gint32 position,
                   gint32 offsety, gboolean has_alpha)
 {
   gint32          layer_ID;
+#ifdef GIMP_2_9
   GeglBuffer     *geglbuffer;
   GeglRectangle   extent;
   GeglColor       color;
+#else
+  GimpDrawable *drawable;
+  GimpPixelRgn  region;
+#endif
   guchar         *buff;
   gint32          alpha;
 
@@ -54,6 +62,7 @@ void create_layer(gint32 image_ID, uint8_t *layer_data, gint32 position,
       gimp_layer_set_offsets(layer_ID, offsetx, offsety);
     }
 
+#ifdef GIMP_2_9
   /* Retrieve the buffer for the layer */
   geglbuffer = gimp_drawable_get_buffer(layer_ID);
 
@@ -65,6 +74,27 @@ void create_layer(gint32 image_ID, uint8_t *layer_data, gint32 position,
   gegl_buffer_flush (geglbuffer);
 
   g_object_unref(geglbuffer);
+#else
+  /* Retrieve the drawable for the layer */
+  drawable = gimp_drawable_get(layer_ID);
+
+  /* Get a pixel region from the layer */
+  gimp_pixel_rgn_init(&region,
+                      drawable,
+                      0, 0,
+                      width, height,
+                      FALSE, FALSE);
+
+  /* Copy the image data to the region */
+  gimp_pixel_rgn_set_rect(&region,
+                          layer_data,
+                          0, 0,
+                          width, height);
+
+  /* Flush the drawable and detach */
+  gimp_drawable_flush(drawable);
+  gimp_drawable_detach(drawable);
+#endif
 }
 
 gint32 load_image(const gchar *filename,
@@ -80,7 +110,9 @@ gint32 load_image(const gchar *filename,
   gint32                layer_ID;
   gint                  has_alpha;
   GFile                *file;
+#ifdef GIMP_2_9
   GimpMetadata         *metadata;
+#endif
   WebPData              bitstream;
   WebPMux              *mux;
   WebPBitstreamFeatures features;
@@ -113,7 +145,9 @@ gint32 load_image(const gchar *filename,
       return -1;
     }
 
+#ifdef GIMP_2_9
   gegl_init(NULL, NULL);
+#endif
 
   WebPData wp_data;
   wp_data.bytes = (uint8_t*)indata;
@@ -238,6 +272,7 @@ gint32 load_image(const gchar *filename,
       WebPDataClear(&wp_data);
     }
 
+#ifdef GIMP_2_9
   if (icc == TRUE)
     {
       Babl             *type;
@@ -283,6 +318,7 @@ gint32 load_image(const gchar *filename,
 
       g_object_unref (file);
     }
+#endif
 
   gimp_image_set_filename(image_ID, filename);
 

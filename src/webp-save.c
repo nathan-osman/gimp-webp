@@ -25,7 +25,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <config.h>
+#ifdef GIMP_2_9
 #include <gegl.h>
+#endif
 #include <webp/encode.h>
 #include <webp/mux.h>
 
@@ -123,12 +126,12 @@ const gchar *webp_error_string(WebPEncodingError error_code)
     }
 }
 
-gboolean save_single_layer(const gchar    *filename,
-                           gint32          nLayers,
-                           gint32          image_ID,
-                           gint32          drawable_ID,
-                           WebPSaveParams *params,
-                           GError        **error)
+gboolean save_layer(const gchar    *filename,
+                    gint32          nLayers,
+                    gint32          image_ID,
+                    gint32          drawable_ID,
+                    WebPSaveParams *params,
+                    GError        **error)
 {
   gboolean          status   = FALSE;
   FILE             *outfile  = NULL;
@@ -137,10 +140,16 @@ gboolean save_single_layer(const gchar    *filename,
   guchar           *buffer   = NULL;
   gint              w, h;
   gint              bpp;
+#ifdef GIMP_2_9
   GimpColorProfile *profile;
   GimpImageType     drawable_type;
   GeglBuffer       *geglbuffer;
   GeglRectangle     extent;
+#else
+  GimpDrawable     *drawable = NULL;
+  GimpPixelRgn      region;
+  GimpImageType     drawable_type;
+#endif
   gchar            *indata;
   gsize             indatalen;
   struct            stat stsz;
@@ -170,11 +179,18 @@ gboolean save_single_layer(const gchar    *filename,
       drawable_type = gimp_drawable_type(drawable_ID);
 
       /* Retrieve the buffer for the layer */
+#ifdef GIMP_2_9
       geglbuffer = gimp_drawable_get_buffer(drawable_ID);
       extent = *gegl_buffer_get_extent(geglbuffer);
       bpp = gimp_drawable_bpp(drawable_ID);
       w = extent.width;
       h = extent.height;
+#else
+      bpp = gimp_drawable_bpp(drawable_ID);
+      w = gimp_drawable_width(drawable_ID);
+      h = gimp_drawable_height(drawable_ID);
+      drawable_type = gimp_drawable_type(drawable_ID);
+#endif
 
       /* Initialize the WebP configuration with a preset and fill in the
        * remaining values */
@@ -202,9 +218,29 @@ gboolean save_single_layer(const gchar    *filename,
           break;
         }
 
+#ifdef GIMP_2_9
       /* Read the region into the buffer */
       gegl_buffer_get (geglbuffer, &extent, 1.0, NULL, buffer,
                        GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
+#else
+      /* Get the drawable */
+      drawable = gimp_drawable_get(drawable_ID);
+
+      /* Obtain the pixel region for the drawable */
+      gimp_pixel_rgn_init(&region,
+                          drawable,
+                          0, 0,
+                          w, h,
+                          FALSE, FALSE);
+
+      /* Read the region into the buffer */
+      gimp_pixel_rgn_get_rect(&region,
+                              buffer,
+                              0, 0,
+                              w, h);
+
+      gimp_drawable_detach(drawable);
+#endif
 
       /* Use the appropriate function to import the data from the buffer */
       if(drawable_type == GIMP_RGB_IMAGE)
@@ -236,10 +272,13 @@ gboolean save_single_layer(const gchar    *filename,
     }
   while(0);
 
+#ifdef GIMP_2_9
   /* Flush the drawable and detach */
   gegl_buffer_flush (geglbuffer);
   g_object_unref(geglbuffer);
+#endif
 
+#ifdef GIMP_2_9
   fflush(outfile);
   fd_outfile = fileno(outfile);
   fstat(fd_outfile, &stsz);
@@ -298,6 +337,7 @@ gboolean save_single_layer(const gchar    *filename,
     {
       g_printerr("ERROR: No data for features. Can't save features update.\n");
     }
+#endif
 
   /* Free any resources */
   if(outfile)
@@ -315,13 +355,13 @@ gboolean save_single_layer(const gchar    *filename,
   return status;
 }
 
-gboolean save_all_layers(const gchar    *filename,
-                         gint32          nLayers,
-                         gint32         *allLayers,
-                         gint32          image_ID,
-                         gint32          drawable_ID,
-                         WebPSaveParams *params,
-                         GError        **error)
+gboolean save_animation(const gchar    *filename,
+                        gint32          nLayers,
+                        gint32         *allLayers,
+                        gint32          image_ID,
+                        gint32          drawable_ID,
+                        WebPSaveParams *params,
+                        GError        **error)
 {
   gboolean          status   = FALSE;
   FILE             *outfile  = NULL;
@@ -331,7 +371,12 @@ gboolean save_all_layers(const gchar    *filename,
   gint              w, h, bpp;
   GimpImageType     drawable_type;
   GimpRGB           bgcolor;
+#ifdef GIMP_2_9
   GimpColorProfile *profile;
+#else
+  GimpDrawable     *drawable = NULL;
+  GimpPixelRgn      region;
+#endif
   WebPAnimEncoderOptions enc_options;
   WebPData          webp_data;
   int               frame_timestamp = 0;
@@ -372,6 +417,7 @@ gboolean save_all_layers(const gchar    *filename,
           drawable_type = gimp_drawable_type(allLayers[loop]);
 
           /* Retrieve the buffer for the layer */
+#ifdef GIMP_2_9
           GeglBuffer       *geglbuffer;
           GeglRectangle     extent;
           geglbuffer = gimp_drawable_get_buffer (allLayers[loop]);
@@ -379,6 +425,12 @@ gboolean save_all_layers(const gchar    *filename,
           bpp = gimp_drawable_bpp (allLayers[loop]);
           w = extent.width;
           h = extent.height;
+#else
+          /* Retrieve the image data */
+          bpp = gimp_drawable_bpp(allLayers[loop]);
+          w = gimp_drawable_width(allLayers[loop]);
+          h = gimp_drawable_height(allLayers[loop]);
+#endif
 
           if (loop == 0)
             {
@@ -424,9 +476,29 @@ gboolean save_all_layers(const gchar    *filename,
           picture.writer        = WebPMemoryWrite;
           picture.progress_hook = webp_file_progress;
 
+#ifdef GIMP_2_9
           /* Read the region into the buffer */
           gegl_buffer_get (geglbuffer, &extent, 1.0, NULL, buffer,
                            GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
+#else
+          /* Get the drawable */
+          drawable = gimp_drawable_get(allLayers[loop]);
+
+          /* Obtain the pixel region for the drawable */
+          gimp_pixel_rgn_init(&region,
+                              drawable,
+                              0, 0,
+                              w, h,
+                              FALSE, FALSE);
+
+          /* Read the region into the buffer */
+          gimp_pixel_rgn_get_rect(&region,
+                                  buffer,
+                                  0, 0,
+                                  w, h);
+
+          gimp_drawable_detach(drawable);
+#endif
 
           /* Use the appropriate function to import the data from the buffer */
           if(drawable_type == GIMP_RGB_IMAGE)
@@ -454,9 +526,11 @@ gboolean save_all_layers(const gchar    *filename,
               free(buffer);
             }
 
+#ifdef GIMP_2_9
           /* Flush the drawable and detach */
           gegl_buffer_flush (geglbuffer);
           g_object_unref(geglbuffer);
+#endif
         }
 
       WebPAnimEncoderAdd(enc, NULL, frame_timestamp, NULL);
@@ -487,6 +561,7 @@ gboolean save_all_layers(const gchar    *filename,
 
       WebPMuxSetAnimationParams(mux, &anim_params);
 
+#ifdef GIMP_2_9
       /* Save ICC data */
       profile = gimp_image_get_color_profile (image_ID);
       if (profile)
@@ -500,6 +575,7 @@ gboolean save_all_layers(const gchar    *filename,
           WebPMuxSetChunk(mux, "ICCP", &chunk, 1);
           g_object_unref (profile);
         }
+#endif
 
       WebPMuxAssemble(mux, &webp_data);
 
@@ -509,8 +585,6 @@ gboolean save_all_layers(const gchar    *filename,
       WebPAnimEncoderDelete(enc);
 
       status = TRUE;
-
-
     }
   while(0);
 
@@ -532,8 +606,10 @@ gboolean save_image(const gchar    *filename,
                     WebPSaveParams *params,
                     GError        **error)
 {
+#ifdef GIMP_2_9
   GimpMetadata          *metadata;
   GimpMetadataSaveFlags  metadata_flags;
+#endif
   gboolean               status = FALSE;
   GFile                 *file;
 
@@ -542,29 +618,32 @@ gboolean save_image(const gchar    *filename,
       return FALSE;
     }
 
+#ifdef GIMP_2_9
   gegl_init(NULL, NULL);
+#endif
 
   g_print("Saving WebP file %s\n", filename);
 
   if (nLayers == 1)
     {
-      status = save_single_layer(filename, nLayers, image_ID, drawable_ID, params,
-                                 error);
+      status = save_layer(filename, nLayers, image_ID, drawable_ID, params,
+                          error);
     }
   else
     {
       if (params->animation == FALSE)
         {
-          status = save_single_layer(filename, nLayers, image_ID, drawable_ID, params,
-                                     error);
+          status = save_layer(filename, nLayers, image_ID, drawable_ID, params,
+                              error);
         }
       else
         {
-          status = save_all_layers(filename, nLayers, allLayers, image_ID, drawable_ID,
-                                   params, error);
+          status = save_animation(filename, nLayers, allLayers, image_ID, drawable_ID,
+                                  params, error);
         }
     }
 
+#ifdef GIMP_2_9
   metadata = gimp_image_metadata_save_prepare (image_ID,
              "image/webp",
              &metadata_flags);
@@ -579,6 +658,7 @@ gboolean save_image(const gchar    *filename,
                                        file, NULL);
       g_object_unref (file);
     }
+#endif
 
   /* Return the status */
   return status;

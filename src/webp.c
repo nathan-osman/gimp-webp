@@ -1,6 +1,7 @@
 /**
  * gimp-webp - WebP Plugin for the GIMP
  * Copyright (C) 2015  Nathan Osman
+ * Copyright (C) 2016  Ben Touchette
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -107,6 +108,10 @@ void query()
     /* Register the load handlers. */
     gimp_register_file_handler_mime(LOAD_PROCEDURE, "image/webp");
     gimp_register_load_handler(LOAD_PROCEDURE, "webp", "");
+    gimp_register_magic_load_handler (LOAD_PROCEDURE,
+                                      "webp",
+                                      "",
+                                      "0,string,RIFF*WEBP");
 
     /* Now register the save handlers. */
     gimp_register_file_handler_mime(SAVE_PROCEDURE, "image/webp");
