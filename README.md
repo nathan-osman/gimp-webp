@@ -1,5 +1,6 @@
 ## gimp-webp
 
+[ Now part of GIMP should make show up for 2.9.5 or 2.9.6, currently in the gimp git repository (master)]
 This plugin provides [Gimp](https://developers.google.com/speed/webp/) with the ability to load and export WebP images. During export, a dialog is presented that provides access to image quality settings.
 
 ![Export Dialog](images/gimp-webp.jpg)
