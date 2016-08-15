@@ -243,6 +243,7 @@ gboolean save_layer(gint32             drawable_ID,
 /* Save an animation to disk */
 gboolean save_animation(gint32          nLayers,
                         gint32         *allLayers,
+                        FILE           *outfile,
                         WebPSaveParams *params,
                         GError        **error)
 {
@@ -259,20 +260,23 @@ gboolean save_animation(gint32          nLayers,
     WebPAnimEncoderOptionsInit(&enc_options);
 
     do {
+        int i;
+        gint32 drawable_ID = allLayers[0];
+
         /* Create the encoder */
         enc = WebPAnimEncoderNew(gimp_drawable_width(drawable_ID),
                                  gimp_drawable_height(drawable_ID),
                                  &enc_options);
 
         /* Encode each layer */
-        for (int i = 0; i < nLayers; i++) {
+        for (i = 0; i < nLayers; i++) {
             if ((innerStatus = save_layer(allLayers[i],
-                                          params,
                                           NULL,
                                           NULL,
                                           TRUE,
                                           enc,
                                           frame_timestamp,
+                                          params,
                                           error)) == FALSE) {
                 break;
             }
@@ -365,7 +369,7 @@ gboolean save_image(const gchar    *filename,
 
 #ifdef WEBP_0_5
     if (params->animation == TRUE) {
-        status = save_animation(nLayers
+        status = save_animation(nLayers,
                                 allLayers,
                                 outfile,
                                 params,
