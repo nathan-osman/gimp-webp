@@ -158,13 +158,13 @@ gboolean load_image(const gchar *filename,
 
 #ifdef WEBP_0_5
         if (flags & ANIMATION_FLAG) {
-            int frames;
+            int frames, i;
 
             /* Retrieve the number of frames */
             WebPMuxNumChunks(mux, WEBP_CHUNK_ANMF, &frames);
 
             /* Loop over each of the frames */
-            for (int i = 0; i < frames; ++i) {
+            for (i = 0; i < frames; ++i) {
                 WebPMuxFrameInfo frame = {0};
 
                 /* Retrieve the data for the frame */
